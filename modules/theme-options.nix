@@ -29,12 +29,19 @@ in
 {
   options.theme = {
 
-    meta.name = mkOption {
-      type = types.str;
-      description = "Human-readable theme identifier.";
+    meta = {
+      name = mkOption {
+        type = types.str;
+        description = "Human-readable theme identifier.";
+      };
+
+      colorScheme = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Plasma color scheme name — must match an installed .colors file stem.";
+      };
     };
 
-    # ── Colours ──────────────────────────────────────────────────────────────
     colors = {
       background = mkOption {
         type = types.str;
@@ -46,7 +53,6 @@ in
       surface = mkOption { type = types.str; };
     };
 
-    # ── Fonts ─────────────────────────────────────────────────────────────────
     fonts = {
       sans = mkOption { type = fontType; };
       monospace = mkOption { type = fontType; };
@@ -57,7 +63,6 @@ in
       };
     };
 
-    # ── GTK ───────────────────────────────────────────────────────────────────
     gtk = {
       themeName = mkOption { type = types.str; };
       themePackage = mkOption {
@@ -80,7 +85,6 @@ in
       };
     };
 
-    # ── Qt ────────────────────────────────────────────────────────────────────
     qt = {
       style = mkOption { type = types.str; };
       stylePackage = mkOption {
@@ -89,7 +93,6 @@ in
       };
     };
 
-    # ── Terminal colours (foot palette) ──────────────────────────────────────
     terminal = {
       background = mkOption { type = colorType; };
       foreground = mkOption { type = colorType; };
@@ -101,10 +104,6 @@ in
       bright = mkOption { type = paletteType; };
     };
 
-    # ── Compositor-specific config ────────────────────────────────────────────
-    # Themes own compositor behaviour — the aesthetic intent (instant vs fluid)
-    # belongs to the theme, not the DE.  DE modules read the relevant field and
-    # ignore the rest.
     compositor = {
       niri = mkOption {
         type = types.nullOr types.path;
@@ -123,9 +122,7 @@ in
       };
     };
 
-    # ── Wallpaper ─────────────────────────────────────────────────────────────
     wallpaper = {
-      # Bare compositor DEs (niri) use swaybg; full DEs set their own.
       color = mkOption {
         type = types.nullOr types.str;
         default = null;
@@ -138,7 +135,6 @@ in
       };
     };
 
-    # ── Launcher ───────────────────────────────────────────────────────────────
     launcher = {
       command = mkOption {
         type = types.str;

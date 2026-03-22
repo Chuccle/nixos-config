@@ -1,10 +1,3 @@
-# profiles/de/elementary.nix
-#
-# elementary OS / Pantheon DE profile.
-# Enables Pantheon, lightdm + pantheon-greeter, wires theme.* where
-# Pantheon's NixOS options allow. theme.compositor.pantheon can carry
-# additional Pantheon-specific overrides set by the theme module.
-
 {
   config,
   pkgs,
@@ -17,7 +10,6 @@ let
 
 in
 {
-  # ── Pantheon ─────────────────────────────────────────────────────────────────
   services = {
     desktopManager.pantheon.enable = true;
     xserver = {
@@ -29,10 +21,8 @@ in
     };
   };
 
-  # ── Graphics ─────────────────────────────────────────────────────────────────
   hardware.graphics.enable = true;
 
-  # ── XDG portal — Pantheon provides its own ───────────────────────────────────
   xdg.portal = {
     enable = true;
     extraPortals = [ pkgs.pantheon.xdg-desktop-portal-pantheon ];
@@ -43,7 +33,6 @@ in
 
   theme.launcher.command = "slingshot-launcher";
 
-  # ── home-manager — dconf/gsettings for Pantheon theming ─────────────────────
   home-manager.sharedModules = [
     {
       dconf.settings = {

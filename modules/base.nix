@@ -1,28 +1,17 @@
-# modules/base.nix
-#
-# Everything that is true regardless of DE or theme:
-# users, locale, nix daemon, common CLI tools, doas.
-# No graphical services live here.
-
 { pkgs, inputs, ... }:
 {
-
-  # ── Boot ────────────────────────────────────────────────────────────────────
   boot = {
     loader.systemd-boot.enable = true;
     loader.efi.canTouchEfiVariables = true;
     tmp.cleanOnBoot = true;
   };
 
-  # ── Kernel ──────────────────────────────────────────────────────────────────
   nixpkgs.overlays = [ inputs.nix-cachyos-kernel.overlays.pinned ];
   boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
 
-  # ── Network ─────────────────────────────────────────────────────────────────
   networking.hostName = "box";
   networking.networkmanager.enable = true;
 
-  # ── Locale ──────────────────────────────────────────────────────────────────
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";
   console.keyMap = "uk";
@@ -39,7 +28,6 @@
     ];
   };
 
-  # ── User ────────────────────────────────────────────────────────────────────
   users.users.charlie = {
     isNormalUser = true;
     extraGroups = [
@@ -52,7 +40,6 @@
   };
   environment.shells = [ pkgs.nushell ];
 
-  # ── Common CLI packages ──────────────────────────────────────────────────────
   environment.systemPackages = with pkgs; [
     git
     uutils-coreutils-noprefix
@@ -65,7 +52,6 @@
     helix
   ];
 
-  # ── PipeWire ─────────────────────────────────────────────────────────────────
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
@@ -75,7 +61,6 @@
     jack.enable = true;
   };
 
-  # ── Nix daemon ───────────────────────────────────────────────────────────────
   nix = {
     gc = {
       automatic = true;

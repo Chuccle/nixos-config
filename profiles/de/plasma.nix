@@ -1,9 +1,3 @@
-# profiles/de/plasma.nix
-#
-# KDE Plasma 6 DE profile.
-# Enables SDDM, Plasma, and wires theme.* into plasma-manager where possible.
-# theme.compositor.kwin can carry kwin rule attrsets set by the theme module.
-
 {
   inputs,
   config,
@@ -18,7 +12,6 @@ let
 
 in
 {
-  # ── Plasma + SDDM ────────────────────────────────────────────────────────────
   services.desktopManager.plasma6.enable = true;
 
   services.displayManager.sddm = {
@@ -26,17 +19,14 @@ in
     wayland.enable = true;
   };
 
-  # ── Graphics ────────────────────────────────────────────────────────────────
   hardware.graphics.enable = true;
 
-  # ── XDG portal — Plasma provides its own ────────────────────────────────────
   xdg.portal = {
     enable = true;
     extraPortals = [ pkgs.kdePackages.xdg-desktop-portal-kde ];
     config.common.default = "kde";
   };
 
-  # ── plasma-manager via home-manager ─────────────────────────────────────────
   home-manager.sharedModules = [
     inputs.plasma-manager.homeModules.plasma-manager
     {
@@ -71,23 +61,18 @@ in
         };
 
         workspace = {
-          colorScheme = t.meta.name;
+          colorScheme = lib.mkIf (t.meta.colorScheme != null) t.meta.colorScheme;
           cursor.theme = t.gtk.cursor;
           cursor.size = t.gtk.cursorSize;
 
-          # Solid colour wallpaper — Plasma can do more but this is the
-          # theme-agnostic baseline. Override per-theme in compositor.kwin
-          # or extend this block in a theme-specific overlay module.
           wallpaper = lib.mkIf (t.wallpaper.path != null) (toString t.wallpaper.path);
         };
 
-        # kwin window rules supplied by the theme, if any
         kwin = lib.mkIf (kw != null) kw;
       };
     }
   ];
 
-  # ── GTK integration inside Plasma ───────────────────────────────────────────
   programs.dconf.enable = true;
 
   environment.systemPackages =

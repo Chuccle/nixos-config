@@ -1,13 +1,11 @@
-# profiles/theme/win95.nix
-#
-# Windows 95 theme module.
-# Sets config.theme.* — consumed by DE profiles and home.nix.
-
 { pkgs, ... }:
 {
 
   theme = {
-    meta.name = "win95";
+    meta = {
+      name = "win95";
+      colorScheme = null;
+    };
 
     colors = {
       background = "#008080";
@@ -74,9 +72,7 @@
     };
 
     compositor = {
-      # niri: instant, no gaps, hard edges — the aesthetic IS win95
       niri = ../../niri/win95.kdl;
-      # kwin: disable all animations, square corners
       kwin = {
         effects = {
           desktopSwitching.animation = "off";

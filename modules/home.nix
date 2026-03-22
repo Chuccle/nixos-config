@@ -1,12 +1,3 @@
-# modules/home.nix
-#
-# A single home-manager module that reads config.theme.* and applies it
-# everywhere. It has no knowledge of which theme or DE is active — that
-# is the module system's job.
-#
-# Imported once in flake.nix via home-manager.sharedModules so that it
-# receives the top-level NixOS config (and therefore config.theme.*).
-
 { lib, osConfig, ... }:
 
 let
@@ -38,7 +29,6 @@ in
       ++ lib.optionals (tq.stylePackage != null) [ tq.stylePackage ];
   };
 
-  # ── GTK ────────────────────────────────────────────────────────────────────
   gtk = {
     enable = true;
     theme = lib.mkIf (tg.themePackage != null) {
@@ -57,7 +47,6 @@ in
     font = { inherit (tf.sans) name size; };
   };
 
-  # ── Qt ─────────────────────────────────────────────────────────────────────
   qt = {
     enable = true;
     platformTheme.name = "gtk";
@@ -67,7 +56,6 @@ in
     };
   };
 
-  # ── Fonts ───────────────────────────────────────────────────────────────────
   fonts.fontconfig.enable = true;
 
   programs = {

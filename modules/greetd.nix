@@ -1,15 +1,3 @@
-# modules/greetd.nix
-#
-# Reusable greetd + tuigreet module. DE-agnostic: the caller passes the
-# session command, keeping compositor concerns out of the greeter layer.
-#
-# Usage:
-#   greetd = {
-#     enable  = true;
-#     session.command = "${pkgs.niri}/bin/niri-session";
-#     tuigreet.greeting = "Welcome";
-#   };
-
 {
   config,
   lib,

@@ -3,16 +3,16 @@
 
   theme = {
     meta = {
-      name = "liquid-glass";
+      name = "whitesur";
       colorScheme = "BreezeDark";
     };
 
     colors = {
-      background = "#09080f";
-      foreground = "#ece8f5";
-      accent = "#4db8ff";
-      border = "#ffffff14";
-      surface = "#12101c";
+      background = "#f6f6f8";
+      foreground = "#1c1c1e";
+      accent = "#0071e3";
+      border = "#00000012";
+      surface = "#ffffff";
     };
 
     fonts = {
@@ -24,7 +24,6 @@
         name = "Geist Mono";
         size = 11;
       };
-
       packages = with pkgs; [
         geist-font
         fira-code
@@ -34,51 +33,51 @@
     };
 
     gtk = {
-      themeName = "adw-gtk3-dark";
-      themePackage = pkgs.adw-gtk3;
+      themeName = "WhiteSur-Light";
+      themePackage = pkgs.whitesur-gtk-theme;
 
-      icons = "Papirus-Dark";
-      iconsPackage = pkgs.papirus-icon-theme;
+      icons = "WhiteSur";
+      iconsPackage = pkgs.whitesur-icon-theme;
 
-      cursor = "Bibata-Modern-Ice";
+      cursor = "Bibata-Modern-Classic";
       cursorPackage = pkgs.bibata-cursors;
       cursorSize = 28;
     };
 
     qt = {
-      style = "adwaita-dark";
+      style = "adwaita";
       stylePackage = pkgs.adwaita-qt;
     };
 
     terminal = {
-      background = "09080f";
-      foreground = "ece8f5";
-      alpha = "0.76";
+      background = "f6f6f8";
+      foreground = "1c1c1e";
+      alpha = "0.88";
 
       regular = {
-        black = "1c1928";
-        red = "f87171";
-        green = "34d399";
-        yellow = "fbbf24";
-        blue = "4db8ff";
-        magenta = "c084fc";
-        cyan = "22d3ee";
-        white = "c8c4d8";
+        black = "1c1c1e";
+        red = "ff3b30";
+        green = "34c759";
+        yellow = "ff9500";
+        blue = "0071e3";
+        magenta = "af52de";
+        cyan = "32ade6";
+        white = "f2f2f7";
       };
       bright = {
-        black = "3d3952";
-        red = "fca5a5";
-        green = "6ee7b7";
-        yellow = "fde68a";
-        blue = "93c5fd";
-        magenta = "d8b4fe";
-        cyan = "67e8f9";
-        white = "ece8f5";
+        black = "636366";
+        red = "ff6961";
+        green = "30d158";
+        yellow = "ffd60a";
+        blue = "409cff";
+        magenta = "da8fff";
+        cyan = "5ac8f5";
+        white = "ffffff";
       };
     };
 
     compositor = {
-      niri = ../../niri/liquid-glass.kdl;
+      niri = ../../niri/whitesur.kdl;
       kwin = {
         effects = {
           desktopSwitching.animation = "slide";
@@ -86,8 +85,8 @@
           windowOpenClose.animation = "glide";
           blur = {
             enable = true;
-            strength = 14;
-            noiseStrength = 5;
+            strength = 12;
+            noiseStrength = 2;
           };
         };
       };
@@ -95,7 +94,7 @@
     };
 
     wallpaper = {
-      color = "#09080f";
+      color = "#d4e5f7";
       path = null;
     };
 
