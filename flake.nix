@@ -1,118 +1,90 @@
 {
-  description = "composable nixos — DE × theme";
+  description = "composable nixos — DE x theme";
 
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    treefmt-nix.url = "github:numtide/treefmt-nix";
-    nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
+  nixConfig = {
+    extra-substituters = [
+      "https://cache.garnix.io/"
+      "https://nix-community.cachix.org"
+    ];
 
-    home-manager = {
-      url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    extra-trusted-public-keys = [
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+    ];
 
-    plasma-manager = {
-      url = "github:nix-community/plasma-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
-    };
+    experimental-features = [
+      "flakes"
+      "nix-command"
+      "pipe-operators"
+    ];
+  };
+
+  inputs.nixpkgs = {
+    url = "github:NixOS/nixpkgs/nixos-unstable-small";
+  };
+
+  inputs.flake-parts = {
+    url = "github:hercules-ci/flake-parts";
+    inputs.nixpkgs-lib.follows = "nixpkgs";
+  };
+
+  inputs.nix-cachyos-kernel = {
+    url = "github:xddxdd/nix-cachyos-kernel/release";
+  };
+
+  inputs.treefmt-nix = {
+    url = "github:numtide/treefmt-nix";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  inputs.hjem = {
+    url = "github:feel-co/hjem";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  inputs.hjem-rum = {
+    url = "github:snugnug/hjem-rum";
+    inputs.nixpkgs.follows = "nixpkgs";
+    inputs.hjem.follows = "hjem";
+    inputs.ndg.follows = "";
+    inputs.treefmt-nix.follows = "";
+  };
+
+  inputs.helium = {
+    url = "github:AlvaroParker/helium-nix";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  inputs.ublock = {
+    url = "github:gorhill/uBlock";
+    flake = false;
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      home-manager,
-      treefmt-nix,
-      ...
-    }@inputs:
-    let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-      inherit (nixpkgs) lib;
+    inputs:
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } (
+      {
+        lib,
+        ...
+      }:
+      let
+        inherit (lib.filesystem) listFilesRecursive;
+        inherit (lib.lists) filter singleton elem;
+        inherit (lib.strings) getName hasSuffix;
+      in
+      {
+        systems = singleton "x86_64-linux";
 
-      treefmtEval = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
+        imports = filter (hasSuffix ".mod.nix") (listFilesRecursive ./.);
 
-      validateKdl =
-        name: path:
-        pkgs.runCommand "niri-validate-${name}" {
-          nativeBuildInputs = [ pkgs.niri ];
-        } "niri validate -c ${path} && touch $out";
-
-      mkSystem =
-        { de, theme }:
-        lib.nixosSystem {
-          inherit system;
-          specialArgs = { inherit inputs; };
-          modules = [
-            ./modules/theme-options.nix
-            theme
-            de
-            ./modules/base.nix
-            ./hardware/box.nix
-            home-manager.nixosModules.home-manager
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                users.charlie = ./modules/home.nix;
-              };
-            }
-          ];
-        };
-
-      des = {
-        niri = ./profiles/de/niri.nix;
-        plasma = ./profiles/de/plasma.nix;
-        elementary = ./profiles/de/elementary.nix;
-      };
-
-      themes = {
-        win95 = ./profiles/theme/win95.nix;
-        glass = ./profiles/theme/liquid-glass.nix;
-        whitesur = ./profiles/theme/whitesur.nix;
-      };
-
-      kdlFiles = {
-        liquid-glass = ./niri/liquid-glass.kdl;
-        win95 = ./niri/win95.kdl;
-        whitesur = ./niri/whitesur.kdl;
-      };
-
-    in
-    {
-      devShells.${system}.default = pkgs.mkShell {
-        packages = with pkgs; [
-          deadnix
-          statix
-          nil
-        ];
-      };
-
-      formatter.${system} = treefmtEval.config.build.wrapper;
-
-      checks.${system} = {
-        formatting = treefmtEval.config.build.check self;
+        perSystem =
+          { system, ... }:
+          {
+            _module.args.pkgs = import inputs.nixpkgs {
+              inherit system;
+              config.allowUnfreePredicate = pkg: elem (getName pkg) (singleton "ida-pro");
+            };
+          };
       }
-      // lib.mapAttrs' (
-        name: path: lib.nameValuePair "niri-validate-${name}" (validateKdl name path)
-      ) kdlFiles;
-
-      nixosConfigurations = lib.listToAttrs (
-        map
-          (
-            { de, theme }:
-            lib.nameValuePair "box-${de}-${theme}" (mkSystem {
-              de = des.${de};
-              theme = themes.${theme};
-            })
-          )
-          (
-            lib.cartesianProduct {
-              de = lib.attrNames des;
-              theme = lib.attrNames themes;
-            }
-          )
-      );
-    };
+    );
 }

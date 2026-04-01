@@ -14,19 +14,13 @@ jobs:
       - uses: cachix/install-nix-action@v27
         with:
           extra_nix_config: |
-            experimental-features = nix-command flakes
+            experimental-features = nix-command flakes pipe-operators
             accept-flake-config = true
 
       - uses: cachix/cachix-action@v14
         with:
           name: chuccle
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: statix
-        run: nix run nixpkgs#statix -- check .
-
-      - name: deadnix
-        run: nix run nixpkgs#deadnix -- --fail .
 
       - name: flake check
         run: nix flake check
