@@ -1,0 +1,69 @@
+name: cache
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-flight runs for the same ref so queued builds don't pile up against
+# the free-tier minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Build each output set on its own runner: parallel, with independent logs
+      # and failures. Scoping to our own attrs (rather than a bare `--flake .`)
+      # avoids recursing into `self.inputs` — caching the configs (checks),
+      # ida-pro + server tarballs (packages) and the dev env (devShells) without
+      # ever touching input flakes.
+      matrix:
+        attr: [checks, packages, devShells]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Free runners start with ~14 GB free disk; the desktop toplevel (niri,
+      # DMS, Qt, Electron, ida-pro, server tarballs) needs far more. Reclaim
+      # ~25-30 GB by dropping toolchains we never use.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          install_url: https://releases.nixos.org/nix/nix-2.34.7/install
+          extra_nix_config: |
+            experimental-features = nix-command flakes pipe-operators
+            accept-flake-config = true
+
+      # Configure chuccle as a *substituter* (with the right public key, fetched
+      # automatically) so previously-built outputs are pulled instead of rebuilt.
+      # Without this, --cachix-cache only pushes — nothing is ever read back, so
+      # every run is a full cold rebuild. skipPush: nix-fast-build does the push.
+      - uses: cachix/cachix-action@v15
+        with:
+          name: chuccle
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipPush: true
+
+      - name: Build and cache ${{ matrix.attr }}
+        run: |
+          nix run github:Mic92/nix-fast-build -- \
+            --flake ".#${{ matrix.attr }}" \
+            --no-nom \
+            --skip-cached \
+            --cachix-cache chuccle
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
