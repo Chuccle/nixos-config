@@ -2,7 +2,7 @@
   desktopModules.labwc =
     { lib, pkgs, ... }:
     let
-      inherit (lib.meta) getExe;
+      inherit (lib.meta) getExe getExe';
     in
     {
       environment.systemPackages = [
@@ -10,11 +10,22 @@
         pkgs.quickshell
         pkgs.swaybg
       ];
-      desktop.sessionCommand = getExe pkgs.labwc;
+
+      # WLR_RENDERER_ALLOW_SOFTWARE lets wlroots fall back to llvmpipe, so the
+      # stack still comes up in VMs without GPU acceleration (virgl). Prefixed
+      # via `env` because greetd execs the command without a shell.
+      desktop.sessionCommand = "${getExe' pkgs.coreutils "env"} WLR_RENDERER_ALLOW_SOFTWARE=1 ${getExe pkgs.labwc}";
+
+      # SESSION BASELINE
+      # The niri stack gets these via nixpkgs' programs.niri -> wayland-session;
+      # labwc has no nixpkgs module, so enable the GPU userspace stack (mesa at
+      # /run/opengl-driver — labwc and quickshell need EGL) and polkit here.
+      services.graphical-desktop.enable = true;
+      security.polkit.enable = true;
     };
 
   desktopHomeModules.labwc =
-    { osConfig, lib, ... }:
+    { lib, osConfig, ... }:
     let
       inherit (lib.generators) mkKeyValueDefault toKeyValue;
       inherit (lib.strings) removePrefix;

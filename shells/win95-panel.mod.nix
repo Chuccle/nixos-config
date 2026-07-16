@@ -16,45 +16,47 @@
       xdg.config.files."quickshell/win95/shell.qml".text = /* qml */ ''
         import QtQuick
         import Quickshell
-        import Quickshell.Wayland
-
-        component Bevel: Item {
-            id: bevel
-            property bool raised: true
-            property color face: "${palette.surface}"
-            property color hi: "${palette.overlay}"
-            property color lo: "${palette.muted}"
-            property int thickness: ${toString theme.borderWidth}
-
-            Rectangle { anchors.fill: parent; color: bevel.face }
-
-            // top edge
-            Rectangle {
-                anchors { top: parent.top; left: parent.left; right: parent.right }
-                height: bevel.thickness
-                color: bevel.raised ? bevel.hi : bevel.lo
-            }
-            // left edge
-            Rectangle {
-                anchors { top: parent.top; left: parent.left; bottom: parent.bottom }
-                width: bevel.thickness
-                color: bevel.raised ? bevel.hi : bevel.lo
-            }
-            // bottom edge
-            Rectangle {
-                anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
-                height: bevel.thickness
-                color: bevel.raised ? bevel.lo : bevel.hi
-            }
-            // right edge
-            Rectangle {
-                anchors { top: parent.top; right: parent.right; bottom: parent.bottom }
-                width: bevel.thickness
-                color: bevel.raised ? bevel.lo : bevel.hi
-            }
-        }
 
         ShellRoot {
+            // Inline components must be declared inside the document's root
+            // object — a QML file has exactly one root, so a top-level
+            // `component` before ShellRoot fails to parse.
+            component Bevel: Item {
+                id: bevel
+                property bool raised: true
+                property color face: "${palette.surface}"
+                property color hi: "${palette.overlay}"
+                property color lo: "${palette.muted}"
+                property int thickness: ${toString theme.borderWidth}
+
+                Rectangle { anchors.fill: parent; color: bevel.face }
+
+                // top edge
+                Rectangle {
+                    anchors { top: parent.top; left: parent.left; right: parent.right }
+                    height: bevel.thickness
+                    color: bevel.raised ? bevel.hi : bevel.lo
+                }
+                // left edge
+                Rectangle {
+                    anchors { top: parent.top; left: parent.left; bottom: parent.bottom }
+                    width: bevel.thickness
+                    color: bevel.raised ? bevel.hi : bevel.lo
+                }
+                // bottom edge
+                Rectangle {
+                    anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
+                    height: bevel.thickness
+                    color: bevel.raised ? bevel.lo : bevel.hi
+                }
+                // right edge
+                Rectangle {
+                    anchors { top: parent.top; right: parent.right; bottom: parent.bottom }
+                    width: bevel.thickness
+                    color: bevel.raised ? bevel.lo : bevel.hi
+                }
+            }
+
             PanelWindow {
                 anchors {
                     bottom: true

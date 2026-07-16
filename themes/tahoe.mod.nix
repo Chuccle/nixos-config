@@ -32,6 +32,15 @@
         cursor.name = "WhiteSur-cursors";
         cursor.package = pkgs.whitesur-cursors;
 
+        # WALLPAPER
+        # Generated at build time (nothing fetched, nothing to hash): a soft
+        # blue radial wash in the macOS-Tahoe spirit, light center falling off
+        # to deep blue, for the glass surfaces to pick up.
+        wallpaper = pkgs.runCommand "tahoe-wallpaper.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+          magick -size 3840x2160 radial-gradient:"#a8d0f0"-"#16406e" \
+            -attenuate 0.25 +noise Gaussian -blur 0x2 PNG24:$out
+        '';
+
         palette = {
           base = "#1e1e1e";
           surface = "#2c2c2e";
@@ -52,7 +61,7 @@
 
         blur.enable = true;
         blur.radius = 32;
-        blur.opacity = "0.6";
+        blur.opacity = 0.6;
       };
     };
 }
