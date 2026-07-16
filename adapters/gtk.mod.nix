@@ -1,6 +1,6 @@
 {
   desktopHomeModules.gtk =
-    { osConfig, lib, ... }:
+    { lib, osConfig, ... }:
     let
       inherit (lib.generators) toINI;
 

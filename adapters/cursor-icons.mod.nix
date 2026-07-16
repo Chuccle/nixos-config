@@ -1,6 +1,6 @@
 {
   desktopHomeModules.cursor-icons =
-    { osConfig, lib, ... }:
+    { lib, osConfig, ... }:
     let
       inherit (lib.generators) toINI;
 

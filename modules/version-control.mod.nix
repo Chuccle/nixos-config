@@ -15,22 +15,24 @@
     };
 
   flake.homeModules.git =
-    { lib, pkgs, ... }:
-    let
-      inherit (lib.generators) toGitINI;
-      inherit (lib.lists) singleton;
-    in
+    { pkgs, ... }:
     {
-      packages = singleton pkgs.gitMinimal;
+      # rum.programs.git (same as zoxide.mod.nix/foot.mod.nix) generates the
+      # ini via pkgs.formats.gitIni and installs the package. Explicit
+      # `gitMinimal` keeps the smaller closure the hand-rolled version used —
+      # rum's own default package is the full `pkgs.git`.
+      programs.git = {
+        enable = true;
+        package = pkgs.gitMinimal;
 
-      xdg.config.files."git/config".generator = toGitINI;
-      xdg.config.files."git/config".value = {
-        user.name = "Chuccle";
-        user.email = "chuccle@example.com";
+        settings = {
+          user.name = "Chuccle";
+          user.email = "chuccle@example.com";
 
-        fetch.fsckObjects = true;
-        receive.fsckObjects = true;
-        transfer.fsckobjects = true;
+          fetch.fsckObjects = true;
+          receive.fsckObjects = true;
+          transfer.fsckobjects = true;
+        };
       };
     };
 

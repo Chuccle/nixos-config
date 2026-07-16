@@ -1,4 +1,4 @@
-{ lib, inputs, ... }:
+{ inputs, lib, ... }:
 let
   inherit (lib.attrsets) attrNames mapAttrsToList;
   inherit (lib.fixedPoints) fix;

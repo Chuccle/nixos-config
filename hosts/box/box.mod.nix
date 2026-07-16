@@ -25,6 +25,7 @@ let
     desktopModules.niri
     desktopModules.dms
     desktopModules.login
+    desktopModules.qt
     desktopModules.theme-tahoe
   ];
 
@@ -36,8 +37,17 @@ let
     desktopHomeModules.cursor-icons
   ];
 
+  # fonts-disable kills fontconfig for headless hosts; on a desktop it leaves
+  # every GUI toolkit fontless, so exclude it alongside the server-only service.
   modules =
-    (self.nixosModules |> flip removeAttrs (singleton "peergos-service") |> attrValues)
+    (
+      self.nixosModules
+      |> flip removeAttrs [
+        "peergos-service"
+        "fonts-disable"
+      ]
+      |> attrValues
+    )
     ++ desktopSystem
     ++ singleton {
       home.extraModules = attrValues self.homeModules ++ desktopHome;
@@ -62,6 +72,12 @@ let
         # Autologin into the box user; the session command is published by the
         # composed compositor (niri).
         desktop.autoLoginUser = "box";
+
+        # FIRMWARE
+        # No generated hardware profile is imported, so opt into redistributable
+        # firmware explicitly — without it amdgpu/newer GPUs never initialize
+        # and the session falls back to simpledrm + software rendering.
+        hardware.enableRedistributableFirmware = true;
 
         fileSystems."/" = {
           device = "/dev/disk/by-label/nixos";
