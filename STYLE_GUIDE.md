@@ -7,6 +7,14 @@ Never use `git`. Always use `jj`.
 - Prefer `lib.lists.singleton` over a single item list.
 - Always `let inherit (lib.<path>) foo;` with full paths like `lib.lists.head`,
   never `inherit (lib) foo` unless `foo` has no submodule path.
+- Alphabetize consistently: top-level module function args (e.g.
+  `{ config, lib, osConfig, pkgs, ... }:`), the source path across multiple
+  `inherit (lib.<path>) ...;` lines (e.g. `lib.generators` before `lib.lists`
+  before `lib.strings`), and the names within a single `inherit` line (e.g.
+  `inherit (lib.strings) concatStringsSep removePrefix;`). Does not apply to
+  a helper function's own parameter attrset when its order is semantically
+  meaningful (e.g. it must mirror a fixed external format/enum) — leave those
+  as documented by a comment instead.
 - Always use the Dendritic Pattern (flake-parts `*.mod.nix` auto-discovery).
 - Always prefer `${getExe pkgs.something}` over bare command names in shell
   aliases. Use `package = getExe pkgs.something` when there are multiple usages.

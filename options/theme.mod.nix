@@ -6,6 +6,7 @@
       inherit (lib.options) mkOption;
       inherit (lib.types)
         bool
+        float
         int
         nullOr
         package
@@ -98,8 +99,8 @@
               default = 0;
             };
             blur.opacity = mkOption {
-              type = str;
-              default = "1.0";
+              type = float;
+              default = 1.0;
             };
           };
         };
