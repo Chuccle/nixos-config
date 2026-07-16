@@ -5,6 +5,7 @@
   curl,
   dbus,
   fetchurl,
+  file,
   fontconfig,
   freetype,
   glib,
@@ -53,13 +54,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "ida-pro";
-  version = "9.2.0.250908";
+  version = "9.3.260213";
 
   src =
     let
       raw = fetchurl {
-        url = "https://archive.org/download/ida-pro_91_x64linux/ida-pro_91_x64linux.run";
-        sha256 = "8ff08022be3a0ef693a9e3ea01010d1356b26cfdcbbe7fdd68d01b3c9700f9e2";
+        url = "https://vaclive.party/software/ida-pro/releases/download/9.3.260213/ida-pro_93_x64linux.run";
+        sha256 = "2ed43ae4bb84d74dcae6f0099210dfa8d61bfea4952f5f9a07a9aae16cb70f82";
       };
     in
     runCommand "ida-installer.run" { nativeBuildInputs = singleton patchelf; } /* bash */ ''
@@ -84,6 +85,7 @@ stdenv.mkDerivation (finalAttrs: {
     makeWrapper
     copyDesktopItems
     autoPatchelfHook
+    file
     idaPatch
     qt6.wrapQtAppsHook
   ];
@@ -153,7 +155,7 @@ stdenv.mkDerivation (finalAttrs: {
 
     wrapProgram $out/opt/ida-pro/ida \
       --prefix IDADIR          : $out/opt/ida-pro \
-      --prefix QT_PLUGIN_PATH  : $out/opt/ida-pro/plugins/platforms \
+      --prefix QT_PLUGIN_PATH  : $out/opt/ida-pro/plugins \
       --prefix PYTHONPATH      : $out/opt/ida-pro/idalib/python \
       --prefix PATH            : ${python}/bin:$out/opt/ida-pro \
       --prefix LD_LIBRARY_PATH : $out/lib
@@ -163,20 +165,23 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   postInstall = /* bash */ ''
-    # These eglfs platform plugins require Qt5 EGL FS which we don't ship.
-    rm -f $out/opt/ida-pro/plugins/platforms/libqeglfs*.so
-
-    # The installer marks everything executable; undo that and selectively
-    # restore only the actual executables.
-    find $out/opt/ida-pro -type f -exec chmod -x {} \;
-    chmod +x $out/opt/ida-pro/{assistant,hv,hvui,ida,idapyswitch,idat,picture_decoder,qwingraph,upg32}
+    # The installer marks everything executable; only real ELF executables
+    # should keep that bit (`.so` shared objects are dlopen'd, not run).
+    # Detecting via `file` instead of a fixed name list also covers the
+    # debug servers and dev tools under dbgsrv/ and tools/.
+    find $out/opt/ida-pro -type f -exec sh -c '
+      for f; do
+        case "$(file -b "$f")" in
+          *ELF*executable*) chmod +x "$f" ;;
+          *) chmod -x "$f" ;;
+        esac
+      done
+    ' sh {} +
 
     rm -f $out/opt/ida-pro/{uninstall,Uninstall}*
 
-    ida-patch \
-      $out/opt/ida-pro/libida32.so \
-      $out/opt/ida-pro/libida.so \
-      --output-dir $out/opt/ida-pro
+    # Requires running in current working directory of the ida installation, so we cd into it first
+    cd $out/opt/ida-pro && ida-patch --oneshot
 
     substituteInPlace $out/opt/ida-pro/cfg/hexrays.cfg \
       --replace "MAX_FUNCSIZE            = 64" "MAX_FUNCSIZE            = 1024"

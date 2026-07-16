@@ -1,8 +1,13 @@
 {
   desktopModules.labwc =
-    { lib, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
-      inherit (lib.meta) getExe;
+      inherit (lib.meta) getExe getExe';
     in
     {
       environment.systemPackages = [
@@ -10,11 +15,34 @@
         pkgs.quickshell
         pkgs.swaybg
       ];
-      desktop.sessionCommand = getExe pkgs.labwc;
+
+      # WLR_RENDERER_ALLOW_SOFTWARE lets wlroots fall back to llvmpipe, so the
+      # stack still comes up in VMs without GPU acceleration (virgl).
+      # WLR_NO_HARDWARE_CURSORS: without GPU accel, wlroots still hands the
+      # cursor to the virtual GPU's hardware cursor plane, whose format/
+      # orientation QEMU's virtual display gets wrong — renders as an
+      # upside-down cursor regardless of theme. Forces software cursor
+      # compositing instead.
+      # XCURSOR_THEME/SIZE: greetd execs this directly with no PAM/login-shell
+      # step in between, so the generic `environment.sessionVariables` set in
+      # cursor-icons.mod.nix never reaches this process (confirmed live —
+      # labwc logged "Environment variable $XCURSOR_THEME not set, ignoring."
+      # and fell back to its built-in placeholder cursor). Set explicitly
+      # here, same as labwc's own FAQ recommends. All prefixed via `env`
+      # (not a wrapper script) because greetd execs the command without a
+      # shell.
+      desktop.sessionCommand = "${getExe' pkgs.coreutils "env"} WLR_RENDERER_ALLOW_SOFTWARE=1 WLR_NO_HARDWARE_CURSORS=1 XCURSOR_THEME=${config.theme.cursor.name} XCURSOR_SIZE=${toString config.theme.cursor.size} ${getExe pkgs.labwc}";
+
+      # SESSION BASELINE
+      # The niri stack gets these via nixpkgs' programs.niri -> wayland-session;
+      # labwc has no nixpkgs module, so enable the GPU userspace stack (mesa at
+      # /run/opengl-driver — labwc and quickshell need EGL) and polkit here.
+      services.graphical-desktop.enable = true;
+      security.polkit.enable = true;
     };
 
   desktopHomeModules.labwc =
-    { osConfig, lib, ... }:
+    { lib, osConfig, ... }:
     let
       inherit (lib.generators) mkKeyValueDefault toKeyValue;
       inherit (lib.strings) removePrefix;
@@ -33,11 +61,10 @@
         <?xml version="1.0"?>
         <labwc_config>
           <theme>
-            <name></name>
             <cornerRadius>${toString theme.cornerRadius}</cornerRadius>
             <font place="ActiveWindow">
               <name>${theme.font.sans.name}</name>
-              <size>10</size>
+              <size>${toString theme.font.size.normal}</size>
             </font>
           </theme>
 

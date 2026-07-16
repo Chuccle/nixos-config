@@ -1,6 +1,6 @@
 {
   desktopHomeModules.plasma-theme =
-    { osConfig, lib, ... }:
+    { lib, osConfig, ... }:
     let
       inherit (lib.generators) toINI;
 
