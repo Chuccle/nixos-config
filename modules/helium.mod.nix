@@ -50,10 +50,21 @@ let
     web-archives.id = "hkligngkgcpcolhcnkgccglchdafcnao";
   };
 
-  policy = {
-    # EXTENSIONS
-    ExtensionInstallForcelist =
-      extensions |> mapAttrsToList (_name: { id, ... }: "${id};https://services.helium.imput.net/ext");
+  # The extension-forcelist shape ("id;update-url") is exactly what
+  # nixpkgs' `programs.chromium.extensions` documents, so it's the one
+  # policy field pulled out separately rather than left in `extraPolicy`.
+  extensionForcelist =
+    extensions |> mapAttrsToList (_name: { id, ... }: "${id};https://services.helium.imput.net/ext");
+
+  # EXTRA POLICY
+  # Everything `programs.chromium` (nixos/modules/programs/chromium.nix)
+  # doesn't give a typed field for — it only types extensions-forcelist and
+  # the default-search-provider trio, and deliberately hands the rest of the
+  # Chrome Enterprise policy surface to `extraOpts` as its own escape hatch,
+  # since nixpkgs itself can't give a closed schema to arbitrary per-vendor
+  # policies (there's no way it could enumerate every extension's own
+  # "3rdparty" override shape, for instance).
+  extraPolicy = {
     ExtensionInstallAllowlist = extensions |> mapAttrsToList (_name: { id, ... }: id);
     ExtensionInstallSources = singleton "https://services.helium.imput.net/*";
 
@@ -66,24 +77,28 @@ let
     # DefaultBrowserSettingEnabled = true;
 
     # SEARCH
-    DefaultSearchProviderEnabled = true;
     DefaultSearchProviderName = "Kagi";
-    DefaultSearchProviderSearchURL = "https://kagi.com/search?q={searchTerms}";
-    DefaultSearchProviderSuggestURL = "https://kagi.com/api/autosuggest?q={searchTerms}";
     SearchSuggestEnabled = true;
   };
 in
 {
-  flake.nixosModules.helium =
-    { lib, ... }:
-    let
-      inherit (lib.strings) toJSON;
-    in
-    {
-      inherit (extensions.ublock-origin.filters) warnings;
+  flake.nixosModules.helium = _: {
+    inherit (extensions.ublock-origin.filters) warnings;
 
-      environment.etc."chromium/policies/managed/policies.json".text = toJSON policy;
+    # `programs.chromium` is nixpkgs' own module (nixos/modules/programs/
+    # chromium.nix) — already part of every `nixosSystem`'s base module
+    # list, no explicit import needed.
+    programs.chromium = {
+      enable = true;
+      extensions = extensionForcelist;
+
+      defaultSearchProviderEnabled = true;
+      defaultSearchProviderSearchURL = "https://kagi.com/search?q={searchTerms}";
+      defaultSearchProviderSuggestURL = "https://kagi.com/api/autosuggest?q={searchTerms}";
+
+      extraOpts = extraPolicy;
     };
+  };
 
   flake.homeModules.helium =
     { lib, osConfig, ... }:
