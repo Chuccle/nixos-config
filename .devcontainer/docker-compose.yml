@@ -26,6 +26,15 @@ services:
       - ../../:/workspaces:cached
       - ./nix.conf:/etc/nix/nix.conf
 
+      # THE NIX STORE
+      # Without this the store lives in the container's writable overlay: it is
+      # thrown away on every container rebuild (so everything is fetched or
+      # compiled again), and it grows the overlay until the Docker engine falls
+      # over. A named volume keeps the store on its own filesystem and persists
+      # it across rebuilds. Docker seeds a fresh named volume from the image's
+      # existing /nix, so the first start is not an empty store.
+      - nix-store:/nix
+
       # Uncomment the next line to use Docker from inside the container. See https://aka.ms/vscode-remote/samples/docker-from-docker-compose for details.
       # - /var/run/docker.sock:/var/run/docker.sock
 
@@ -44,3 +53,6 @@ services:
 
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
+
+volumes:
+  nix-store:
