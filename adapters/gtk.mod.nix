@@ -1,28 +1,8 @@
 {
   desktopHomeModules.gtk =
-    { lib, osConfig, ... }:
+    { osConfig, ... }:
     let
-      inherit (lib.generators) toINI;
-
       inherit (osConfig) theme;
-
-      # GTK SETTINGS
-      # Same value for GTK3 and GTK4. Theme/icon/cursor names and font from tokens.
-      settings = {
-        Settings = {
-          gtk-theme-name = theme.gtk.name;
-          gtk-icon-theme-name = theme.icons.name;
-          gtk-cursor-theme-name = theme.cursor.name;
-          gtk-cursor-theme-size = theme.cursor.size;
-          gtk-font-name = "${theme.font.sans.name} ${toString theme.font.size.normal}";
-          gtk-application-prefer-dark-theme = 1;
-        };
-      };
-
-      settingsFile = {
-        generator = toINI { };
-        value = settings;
-      };
     in
     {
       packages = [
@@ -31,7 +11,19 @@
         theme.cursor.package
       ];
 
-      xdg.config.files."gtk-3.0/settings.ini" = settingsFile;
-      xdg.config.files."gtk-4.0/settings.ini" = settingsFile;
+      # GTK SETTINGS
+      # hjem-rum's own `rum.misc.gtk` module owns writing both gtk-3.0 and
+      # gtk-4.0 settings.ini from one attrset (it auto-prepends "gtk-" to
+      # each key) rather than us hand-rolling `lib.generators.toINI` and
+      # duplicating the file across both versions.
+      rum.misc.gtk.enable = true;
+      rum.misc.gtk.settings = {
+        theme-name = theme.gtk.name;
+        icon-theme-name = theme.icons.name;
+        cursor-theme-name = theme.cursor.name;
+        cursor-theme-size = theme.cursor.size;
+        font-name = "${theme.font.sans.name} ${toString theme.font.size.normal}";
+        application-prefer-dark-theme = 1;
+      };
     };
 }
