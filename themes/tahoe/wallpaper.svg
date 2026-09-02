@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Tahoe wallpaper. Authored rather than fetched, so there is no asset to hash
+  and no upstream to rot — and written as SVG rather than a chain of
+  ImageMagick operations, because layered light is exactly what gradients
+  describe well and shell pipelines describe badly.
+
+  Four layers, back to front: a deep vertical ground, two wide off-centre
+  colour blooms, a bright core, then grain and a vignette. The blooms are what
+  the glass surfaces pick up and blur — a flat wash would leave the whole
+  liquid-glass effect with nothing to show.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1f3f"/>
+      <stop offset="55%" stop-color="#123a6b"/>
+      <stop offset="100%" stop-color="#071427"/>
+    </linearGradient>
+
+    <radialGradient id="bloomCool" cx="0.28" cy="0.30" r="0.62">
+      <stop offset="0%" stop-color="#7fd3ff" stop-opacity="0.85"/>
+      <stop offset="45%" stop-color="#2f8fd8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#0b1f3f" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="bloomWarm" cx="0.78" cy="0.74" r="0.58">
+      <stop offset="0%" stop-color="#a77bff" stop-opacity="0.55"/>
+      <stop offset="50%" stop-color="#5a3fa8" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#0b1f3f" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="core" cx="0.42" cy="0.40" r="0.26">
+      <stop offset="0%" stop-color="#eaf6ff" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#bfe4ff" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#bfe4ff" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="vignette" cx="0.5" cy="0.45" r="0.78">
+      <stop offset="60%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.45"/>
+    </radialGradient>
+
+    <!-- Fine monochrome grain. Wide, smooth gradients band badly on 8-bit
+         displays; a trace of noise dithers the steps away. -->
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="3840" height="2160" fill="url(#ground)"/>
+  <rect width="3840" height="2160" fill="url(#bloomCool)"/>
+  <rect width="3840" height="2160" fill="url(#bloomWarm)"/>
+  <rect width="3840" height="2160" fill="url(#core)"/>
+  <rect width="3840" height="2160" filter="url(#grain)" opacity="0.035"/>
+  <rect width="3840" height="2160" fill="url(#vignette)"/>
+</svg>
