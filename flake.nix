@@ -66,6 +66,20 @@
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
+  inputs.llm-agents = {
+    url = "github:numtide/llm-agents.nix";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  # Source-only, purely for `nix/module.nix` — the ZeroClaw binary itself comes
+  # from llm-agents. Pinned to the same tag llm-agents packages (v0.8.4) so the
+  # module and the binary never drift apart; upstream's own flake exports no
+  # zeroclaw package, so there is nothing else to take from it.
+  inputs.zeroclaw = {
+    url = "github:zeroclaw-labs/zeroclaw/v0.8.4";
+    flake = false;
+  };
+
   outputs =
     inputs:
     inputs.flake-parts.lib.mkFlake { inherit inputs; } (
