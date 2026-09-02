@@ -33,13 +33,23 @@
         cursor.package = pkgs.whitesur-cursors;
 
         # WALLPAPER
-        # Generated at build time (nothing fetched, nothing to hash): a soft
-        # blue radial wash in the macOS-Tahoe spirit, light center falling off
-        # to deep blue, for the glass surfaces to pick up.
-        wallpaper = pkgs.runCommand "tahoe-wallpaper.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
-          magick -size 3840x2160 radial-gradient:"#a8d0f0"-"#16406e" \
-            -attenuate 0.25 +noise Gaussian -blur 0x2 PNG24:$out
-        '';
+        # Authored as SVG in ./tahoe/wallpaper.svg and rasterised at build
+        # time — nothing fetched, nothing to hash. resvg rather than librsvg
+        # because the grain layer uses feTurbulence, which librsvg renders
+        # inconsistently. xmllint gates the source first, so a malformed
+        # gradient fails the build instead of rendering as a black screen.
+        wallpaper =
+          pkgs.runCommand "tahoe-wallpaper.png"
+            {
+              nativeBuildInputs = [
+                pkgs.libxml2
+                pkgs.resvg
+              ];
+            }
+            ''
+              xmllint --noout ${./tahoe/wallpaper.svg}
+              resvg --width 3840 --height 2160 ${./tahoe/wallpaper.svg} $out
+            '';
 
         palette = {
           base = "#1e1e1e";
