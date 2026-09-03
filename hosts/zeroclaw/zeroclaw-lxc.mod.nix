@@ -391,4 +391,40 @@ in
 
   flake.packages.x86_64-linux.zeroclaw-server-lxc =
     self.nixosConfigurations.zeroclaw-server-lxc.config.system.build.tarball;
+
+  # The assertions module above only catches dangling references — it
+  # explicitly doesn't cover field-level mistakes, since serde silently drops
+  # unknown keys and the Nix module system has no idea what a valid
+  # `providers.models.groq.free.timeout_secs` even looks like (`settings` is
+  # freeform `tomlFormat.type`). ZeroClaw ships its own JSON Schema for
+  # exactly this (`zeroclaw config schema`, generated fresh from the pinned
+  # binary so it can never drift from what's actually deployed) — this check
+  # validates the real rendered settings against it, so a wrong type or an
+  # invalid enum value (`level = "omniscient"`, `interval_minutes = "30"`)
+  # fails `nix flake check` instead of surfacing as a startup error on the
+  # box. It still won't catch a misspelt key sitting in a permissive section
+  # — that gap is real and unclosed, not this check's job.
+  flake.checks.x86_64-linux.zeroclaw-config =
+    let
+      system = "x86_64-linux";
+      pkgs = inputs.nixpkgs.legacyPackages.${system};
+      package = inputs.llm-agents.packages.${system}.zeroclaw;
+      settingsJson = pkgs.writeText "zeroclaw-${instanceName}-settings.json" (
+        builtins.toJSON
+          self.nixosConfigurations.zeroclaw-server-lxc.config.services.zeroclaw.instances.${instanceName}.settings
+      );
+    in
+    pkgs.stdenvNoCC.mkDerivation {
+      name = "zeroclaw-config-check";
+      dontUnpack = true;
+      nativeBuildInputs = [
+        package
+        pkgs.check-jsonschema
+      ];
+      buildPhase = ''
+        HOME="$PWD" zeroclaw config schema > schema.json
+        check-jsonschema --schemafile schema.json ${settingsJson}
+      '';
+      installPhase = "touch $out";
+    };
 }
