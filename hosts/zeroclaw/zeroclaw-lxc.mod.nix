@@ -293,13 +293,18 @@ let
 
           channels.cli = true;
 
-          # Loopback only and pairing required. The box is reached over
-          # WireGuard, so nothing here is published to the network — note
-          # there is deliberately no firewall hole for it below.
+          # Bound to all interfaces so the web dashboard / gateway API (the
+          # Tauri app and zerocode TUI pair against the same endpoint) is
+          # reachable from the LAN — WAN never reaches this LXC directly,
+          # only via the OPNsense VM router's WireGuard, so this is a LAN
+          # boundary, not a public one. `allow_public_bind` just silences
+          # ZeroClaw's own "bound to all interfaces" warning; the actual
+          # auth boundary is `require_pairing`, unchanged. Port 42617 is
+          # upstream's default — opened in the firewall below.
           gateway = {
-            host = "127.0.0.1";
+            host = "0.0.0.0";
             require_pairing = true;
-            allow_public_bind = false;
+            allow_public_bind = true;
           };
         };
       };
@@ -365,6 +370,9 @@ let
 
       services.openssh.enable = false;
       services.getty.autologinUser = "root";
+
+      # Gateway dashboard/API — matches gateway.host = "0.0.0.0" above.
+      networking.firewall.allowedTCPPorts = [ 42617 ];
 
       xdg.sounds.enable = false;
       xdg.mime.enable = false;
