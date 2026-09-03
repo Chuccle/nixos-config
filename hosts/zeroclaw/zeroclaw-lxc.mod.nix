@@ -36,10 +36,27 @@ let
   # the next vendor, so a wrong entry degrades quietly rather than breaking the
   # agent. `zeroclaw models refresh --model-provider <family>.free` lists what
   # an endpoint actually advertises today.
+  # Verified against each vendor's live catalog on 2026-09-03 (Cerebras'
+  # public docs table, Groq's rate-limits table, and a keyless fetch of
+  # OpenRouter's /models endpoint — the `zeroclaw-check-models` systemd timer
+  # below is the repeatable version of that check, since these numbers don't
+  # hold forever). Two rungs had gone quietly dead since this ladder was first
+  # written: Cerebras
+  # dropped the whole Llama family from its public
+  # endpoints in favor of gpt-oss-120b/gemma-4-31b, and both OpenRouter
+  # `:free` IDs had rotated out of the catalog entirely. Groq's head model also
+  # moves to gpt-oss-120b here: same 1K req/day as llama-3.3-70b-versatile but
+  # double the token budget (200K vs ~100K TPD) on a comparable-or-stronger
+  # model, with the two Llamas kept as within-vendor fallback. Gemini is left
+  # as-is — gemini-2.5-flash/-lite are still live, just no longer the newest
+  # generation (Gemini 3.x exists now); leave it pinned rather than guess a
+  # fast-moving version string that can't be checked without an AI Studio
+  # login.
   ladder = [
     {
       family = "groq";
       models = [
+        "openai/gpt-oss-120b"
         "llama-3.3-70b-versatile"
         "llama-3.1-8b-instant"
       ];
@@ -47,8 +64,8 @@ let
     {
       family = "cerebras";
       models = [
-        "llama-3.3-70b"
-        "llama3.1-8b"
+        "gpt-oss-120b"
+        "gemma-4-31b"
       ];
     }
     {
@@ -61,8 +78,8 @@ let
     {
       family = "openrouter";
       models = [
-        "deepseek/deepseek-chat-v3-0324:free"
-        "meta-llama/llama-3.3-70b-instruct:free"
+        "z-ai/glm-5.2:free"
+        "nvidia/nemotron-3-super-120b-a12b:free"
       ];
     }
   ];
@@ -105,7 +122,12 @@ let
     self.nixosModules.zeroclaw-assertions
   ]
   ++ singleton (
-    { pkgs, ... }:
+    {
+      pkgs,
+      lib,
+      config,
+      ...
+    }:
     let
       # The ladder crosses into the provisioning script as data, not as
       # generated shell — one JSON file the script iterates with jq.
@@ -115,6 +137,22 @@ let
           envVar = envVarOf entry;
         }) ladder
       );
+
+      instanceCfg = config.services.zeroclaw.instances.${instanceName};
+
+      checkModelsScript = pkgs.writeShellApplication {
+        name = "zeroclaw-check-models";
+        runtimeInputs = [
+          pkgs.coreutils
+          pkgs.gnugrep
+          inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zeroclaw
+        ];
+        runtimeEnv = {
+          CONFIG_DIR = instanceCfg.dataDir;
+        };
+
+        text = fileContents ./zeroclaw-check-models.sh;
+      };
     in
     {
       shell.default = "bash";
@@ -143,6 +181,8 @@ let
 
           text = fileContents ./zeroclaw-keys.sh;
         })
+
+        checkModelsScript
       ];
 
       # Content comes from `zeroclaw-keys`; the module owns the directory and
@@ -274,6 +314,52 @@ let
           MemoryHigh = "1280M";
           CPUQuota = "150%";
           TasksMax = 512;
+        };
+      };
+
+      # SELF-AUDIT
+      # The ladder above is a snapshot: vendor catalogs drift underneath it
+      # with no signal when a rung goes dead (checking this by hand while
+      # writing it found Cerebras had dropped its whole Llama lineup, and
+      # both OpenRouter `:free` IDs had rotated out — neither failure is
+      # loud, the request just falls through to the next vendor).
+      #
+      # This runs as a plain systemd timer, deliberately outside the agent's
+      # own cron/tool-call path — see zeroclaw-check-models.sh for why:
+      # short version, the risk engine has no notion of `zeroclaw`'s own
+      # subcommands, so allowlisting the binary for a read-only check would
+      # also allowlist `config set` and `estop resume` with no gating at all.
+      # A oneshot unit outside the agent means there is nothing here for the
+      # agent to invoke, misuse, or be tricked into invoking.
+      systemd.services."zeroclaw-check-models" = {
+        description = "ZeroClaw free-tier ladder catalog-drift check";
+        after = singleton "zeroclaw-${instanceName}.service";
+
+        # Needs both the secrets (to query each vendor's catalog) and a
+        # config.toml already rendered by the main unit's ExecStartPre — on
+        # a fresh box neither exists until `zeroclaw-keys` has been run once.
+        unitConfig.ConditionPathExists = "${instanceCfg.dataDir}/config.toml";
+
+        serviceConfig = {
+          Type = "oneshot";
+          User = instanceCfg.user;
+          Group = instanceCfg.group;
+          EnvironmentFile = providerEnvFile;
+          ExecStart = lib.getExe checkModelsScript;
+
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+          ProtectSystem = "strict";
+          ProtectHome = true;
+        };
+      };
+
+      systemd.timers."zeroclaw-check-models" = {
+        description = "Weekly ZeroClaw catalog-drift check";
+        wantedBy = singleton "timers.target";
+        timerConfig = {
+          OnCalendar = "Mon *-*-* 06:00:00";
+          Persistent = true;
         };
       };
 
