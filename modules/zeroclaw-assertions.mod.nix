@@ -26,8 +26,12 @@
       #
       # This deliberately covers references, not fields. Unknown *keys* are
       # silently dropped by serde (the schema sets `deny_unknown_fields` in
-      # only a handful of places), so a misspelt field can never be caught
-      # from Nix — that is what the `zeroclaw-config` flake check is for.
+      # only a handful of places), so a misspelt field cannot be caught from
+      # Nix at all. Nothing else closes that gap either: a `zeroclaw-config`
+      # check that validated the rendered settings against the binary's own
+      # JSON Schema existed briefly and was removed as more machinery than the
+      # one class of mistake it caught was worth, so a bad enum value surfaces
+      # when the unit starts rather than at `nix flake check`.
 
       # A dotted `<type>.<alias>` reference resolving into a two-level map.
       resolves =
