@@ -2,9 +2,11 @@
   description = "composable nixos — DE x theme";
 
   nixConfig = {
-    # `zeroclaw` and the rest of the llm-agents package set are prebuilt on
-    # numtide's cache — without it every rebuild of the agent host compiles a
-    # large Rust workspace from source. nix-community carries the rest.
+    # The llm-agents package set is prebuilt on numtide's cache — without it
+    # every rebuild of the agent hosts compiles hermes-agent, opencode and
+    # ai-memory from source, which is hours, not minutes. This only works
+    # because the input does not follow this flake's nixpkgs; see below.
+    # nix-community carries the rest.
     extra-substituters = [
       "https://cache.numtide.com"
       "https://nix-community.cachix.org"
@@ -66,9 +68,15 @@
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
+  # Deliberately does not follow this flake's nixpkgs. Upstream builds and
+  # caches this package set against one pinned `nixpkgs-unstable` rev, so
+  # following rewrites every derivation hash and turns cache.numtide.com into
+  # a complete miss — hermes-agent, opencode and ai-memory then build from
+  # source on every closure change, and this repo tracks
+  # `nixos-unstable-small` rather than `nixpkgs-unstable` anyway, so the revs
+  # could never line up. The price is a second nixpkgs evaluation.
   inputs.llm-agents = {
     url = "github:numtide/llm-agents.nix";
-    inputs.nixpkgs.follows = "nixpkgs";
   };
 
   # Source-only, purely for `nix/module.nix` — the ZeroClaw binary itself comes
