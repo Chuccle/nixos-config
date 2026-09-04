@@ -10,21 +10,6 @@
     let
       inherit (lib.attrsets) filterAttrs mapAttrs' nameValuePair;
       inherit (lib.lists) singleton;
-      statixSrc = pkgs.fetchFromGitHub {
-        owner = "oppiliappan";
-        repo = "statix";
-        rev = "e9df54ce918457f151d2e71993edeca1a7af0132";
-        hash = "sha256-duH6Il124g+CdYX+HCqOGnpJxyxOCgWYcrcK0CBnA2M=";
-      };
-      statix' = pkgs.statix.overrideAttrs (_o: {
-        version = "0-unstable-e9df54c";
-        src = statixSrc;
-        cargoDeps = pkgs.rustPlatform.importCargoLock {
-          lockFile = statixSrc + "/Cargo.lock";
-          allowBuiltinFetchGit = true;
-        };
-        doInstallCheck = false;
-      });
       treefmt = inputs.treefmt-nix.lib.evalModule pkgs (_: {
         projectRootFile = "flake.nix";
         programs = {
@@ -41,10 +26,7 @@
               "*.md"
             ];
           };
-          statix = {
-            enable = true;
-            package = statix';
-          };
+          statix.enable = true;
         };
       });
 
@@ -58,12 +40,12 @@
       devShells.default = pkgs.mkShell {
         packages = [
           treefmt.config.build.wrapper
-          statix'
           pkgs.deadnix
           pkgs.direnv
           pkgs.nil
           pkgs.nix-direnv
           pkgs.nixfmt
+          pkgs.statix
         ];
       };
       checks = {
@@ -79,11 +61,11 @@
           }
         ) { };
         statix = pkgs.callPackage (
-          { stdenvNoCC }:
+          { statix, stdenvNoCC }:
           stdenvNoCC.mkDerivation {
             name = "statix-check";
             src = self;
-            nativeBuildInputs = singleton statix';
+            nativeBuildInputs = singleton statix;
             buildPhase = "statix check .";
             installPhase = "touch $out";
           }
