@@ -1,0 +1,67 @@
+name: nix-build
+description: Build one of this flake's output sets on a cleaned runner and push it to cachix.
+
+# Extracted so the two jobs that call it cannot drift. The caller does its own
+# `actions/checkout` first — a local action has to be on disk before it can be
+# resolved.
+#
+# Third-party actions are pinned by commit rather than by tag: a tag can be
+# moved, and every one of these runs on a runner holding CACHIX_AUTH_TOKEN. The
+# trailing comment is the version that commit was.
+
+inputs:
+  attr:
+    description: Flake output set to build, without the `.#` — `checks`, `packages` or `devShells`.
+    required: true
+  cachix-auth-token:
+    description: Token the push authenticates with.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Free runners start with ~14 GB free disk; the desktop toplevel (niri,
+    # DMS, Qt, Electron, ida-pro, server tarballs) needs far more. Reclaim
+    # ~25-30 GB by dropping toolchains we never use.
+    - name: Free disk space
+      uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
+      with:
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+
+    # v31 is a composite action rather than a Node one, so it also drops off
+    # the deprecated-Node treadmill. It hands nix the job's own GITHUB_TOKEN as
+    # `access-tokens = github.com=...`, which takes flake input fetches off the
+    # shared unauthenticated rate limit.
+    - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.34.7/install
+        extra_nix_config: |
+          experimental-features = nix-command flakes pipe-operators
+          accept-flake-config = true
+
+    # Installs the `cachix` binary that --cachix-cache shells out to, and
+    # authenticates it for the push. It also configures chuccle as a
+    # substituter so previously-built outputs are pulled instead of rebuilt.
+    # skipPush: nix-fast-build does the push.
+    - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+      with:
+        name: chuccle
+        authToken: ${{ inputs.cachix-auth-token }}
+        skipPush: true
+
+    - name: Build and cache ${{ inputs.attr }}
+      shell: bash
+      run: |
+        nix run github:Mic92/nix-fast-build -- \
+          --flake ".#${{ inputs.attr }}" \
+          --no-nom \
+          --skip-cached \
+          --cachix-cache chuccle
+      env:
+        CACHIX_AUTH_TOKEN: ${{ inputs.cachix-auth-token }}
