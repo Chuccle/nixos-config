@@ -55,10 +55,19 @@ runs:
         authToken: ${{ inputs.cachix-auth-token }}
         skipPush: true
 
+    # Pinned to a tag rather than tracking the default branch, so the tool
+    # cannot change under CI without a visible diff.
+    #
+    # Deliberately not `nix run --inputs-from . nixpkgs#nix-fast-build`, which
+    # looks tidier and deadlocks: `--inputs-from .` makes the *outer* nix
+    # evaluate this flake to resolve `nixpkgs#`, populating ~/.cache/nix, and
+    # nix-fast-build then runs its own nix-eval-jobs, built by the locked
+    # nixpkgs against a different nix. Two versions sharing one cache directory
+    # wedge while unpacking a flake input into the Git cache.
     - name: Build and cache ${{ inputs.attr }}
       shell: bash
       run: |
-        nix run github:Mic92/nix-fast-build -- \
+        nix run github:Mic92/nix-fast-build/1.6.0 -- \
           --flake ".#${{ inputs.attr }}" \
           --no-nom \
           --skip-cached \
