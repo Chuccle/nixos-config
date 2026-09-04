@@ -199,31 +199,31 @@
 
         "window.label.text.justify" = "Left";
 
-        "window.active.title.bg.color" = palette.accent;
-        "window.active.label.text.color" = palette.accentText;
-        "window.active.border.color" = palette.muted;
+        "window.active.title.bg.color" = palette.accent.hex;
+        "window.active.label.text.color" = palette.accentText.hex;
+        "window.active.border.color" = palette.muted.hex;
 
-        "window.inactive.title.bg.color" = palette.muted;
-        "window.inactive.label.text.color" = palette.subtext;
-        "window.inactive.border.color" = palette.muted;
+        "window.inactive.title.bg.color" = palette.muted.hex;
+        "window.inactive.label.text.color" = palette.subtext.hex;
+        "window.inactive.border.color" = palette.muted.hex;
 
-        "window.active.button.unpressed.image.color" = palette.accentText;
-        "window.inactive.button.unpressed.image.color" = palette.subtext;
-        "window.button.hover.bg.color" = palette.overlay;
+        "window.active.button.unpressed.image.color" = palette.accentText.hex;
+        "window.inactive.button.unpressed.image.color" = palette.subtext.hex;
+        "window.button.hover.bg.color" = palette.overlay.hex;
         "window.button.hover.bg.corner-radius" = theme.cornerRadius;
 
         "window.active.shadow.size" = 0;
         "window.inactive.shadow.size" = 0;
 
-        "menu.items.bg.color" = palette.surface;
-        "menu.items.text.color" = palette.text;
-        "menu.items.active.bg.color" = palette.accent;
-        "menu.items.active.text.color" = palette.accentText;
+        "menu.items.bg.color" = palette.surface.hex;
+        "menu.items.text.color" = palette.text.hex;
+        "menu.items.active.bg.color" = palette.accent.hex;
+        "menu.items.active.text.color" = palette.accentText.hex;
 
-        "osd.bg.color" = palette.surface;
-        "osd.border.color" = palette.muted;
+        "osd.bg.color" = palette.surface.hex;
+        "osd.border.color" = palette.muted.hex;
         "osd.border.width" = theme.borderWidth;
-        "osd.label.text.color" = palette.text;
+        "osd.label.text.color" = palette.text.hex;
       };
 
       # AUTOSTART
@@ -232,7 +232,7 @@
       # which does not carry the user's profile PATH.
       xdg.config.files."labwc/autostart".text = /* bash */ ''
         ${getExe pkgs.quickshell} -c win95 &
-        ${getExe pkgs.swaybg} -c ${removePrefix "#" palette.base} &
+        ${getExe pkgs.swaybg} -c ${removePrefix "#" palette.base.hex} &
       '';
     };
 }

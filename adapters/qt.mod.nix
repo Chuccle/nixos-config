@@ -24,14 +24,10 @@
     let
       inherit (lib.generators) toINI;
       inherit (lib.lists) singleton;
-      inherit (lib.strings) concatStringsSep removePrefix;
+      inherit (lib.strings) concatStringsSep;
 
       inherit (osConfig) theme;
       inherit (theme) palette;
-
-      # qt6ct color scheme values are #AARRGGBB (alpha first); our tokens are
-      # plain #rrggbb, so prepend an opaque alpha channel.
-      argb = hex: "#ff" + removePrefix "#" hex;
 
       # QPalette::ColorRole enum order (Qt6): WindowText, Button, Light,
       # Midlight, Dark, Mid, Text, BrightText, ButtonText, Base, Window,
@@ -63,7 +59,7 @@
           accent,
         }:
         concatStringsSep ", " (
-          map argb [
+          map ({ argb, ... }: argb) [
             windowText
             button
             light

@@ -23,21 +23,21 @@
       # qmldir registration, so it cannot collide with the one Quickshell
       # generates for the config directory.
       tokens = {
-        inherit (palette) base;
-        inherit (palette) surface;
-        inherit (palette) overlay;
-        inherit (palette) muted;
+        base = palette.base.hex;
+        surface = palette.surface.hex;
+        overlay = palette.overlay.hex;
+        muted = palette.muted.hex;
 
-        inherit (palette) text;
-        inherit (palette) subtext;
+        text = palette.text.hex;
+        subtext = palette.subtext.hex;
 
-        inherit (palette) accent;
-        inherit (palette) accentText;
+        accent = palette.accent.hex;
+        accentText = palette.accentText.hex;
 
-        inherit (palette) red;
-        inherit (palette) green;
-        inherit (palette) blue;
-        inherit (palette) yellow;
+        red = palette.red.hex;
+        green = palette.green.hex;
+        blue = palette.blue.hex;
+        yellow = palette.yellow.hex;
 
         inherit (theme) borderWidth;
         inherit (theme) padding;

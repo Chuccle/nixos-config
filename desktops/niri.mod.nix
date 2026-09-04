@@ -26,7 +26,7 @@
             spread = mkOption { type = int; };
             offsetX = mkOption { type = int; };
             offsetY = mkOption { type = int; };
-            # Hex alpha byte (00-ff) appended to `theme.palette.base`, not a
+            # Hex alpha byte (00-ff) appended to `theme.palette.base.hex`, not a
             # 0-1 float, so it can be spliced directly into the KDL color
             # string without a float->hex conversion helper.
             opacityHex = mkOption { type = str; };
@@ -179,18 +179,18 @@
           [
             (leaf "gaps" [ theme.padding ])
             (leaf "center-focused-column" [ "never" ])
-            (leaf "background-color" [ palette.base ])
+            (leaf "background-color" [ palette.base.hex ])
 
             (block "border" [
               (leaf "width" [ theme.borderWidth ])
-              (leaf "active-color" [ palette.accent ])
-              (leaf "inactive-color" [ palette.overlay ])
+              (leaf "active-color" [ palette.accent.hex ])
+              (leaf "inactive-color" [ palette.overlay.hex ])
             ])
 
             (block "focus-ring" [
               (leaf "width" [ theme.borderWidth ])
-              (leaf "active-color" [ palette.accent ])
-              (leaf "inactive-color" [ palette.overlay ])
+              (leaf "active-color" [ palette.accent.hex ])
+              (leaf "inactive-color" [ palette.overlay.hex ])
             ])
           ]
           ++ optionals glass [
@@ -205,7 +205,7 @@
                   y = niriShadow.offsetY;
                 };
               }
-              (leaf "color" [ "${palette.base}${niriShadow.opacityHex}" ])
+              (leaf "color" [ "${palette.base.hex}${niriShadow.opacityHex}" ])
             ])
           ]
         ))
@@ -240,7 +240,7 @@
           comment = ''
             So zooming out lands on the theme's own base colour rather than
             niri's default grey.'';
-          children = singleton (leaf "backdrop-color" [ palette.base ]);
+          children = singleton (leaf "backdrop-color" [ palette.base.hex ]);
         }
       ]
       ++ [

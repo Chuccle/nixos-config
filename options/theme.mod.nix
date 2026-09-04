@@ -2,8 +2,15 @@
   flake.nixosModules.theme =
     { lib, pkgs, ... }:
     let
+      inherit (lib.lists) foldl';
       inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
+      inherit (lib.strings)
+        removePrefix
+        stringToCharacters
+        substring
+        toLower
+        ;
       inherit (lib.types)
         bool
         float
@@ -12,13 +19,68 @@
         package
         path
         str
+        strMatching
         submodule
         ;
+
+      hexDigits = {
+        "0" = 0;
+        "1" = 1;
+        "2" = 2;
+        "3" = 3;
+        "4" = 4;
+        "5" = 5;
+        "6" = 6;
+        "7" = 7;
+        "8" = 8;
+        "9" = 9;
+        "a" = 10;
+        "b" = 11;
+        "c" = 12;
+        "d" = 13;
+        "e" = 14;
+        "f" = 15;
+      };
 
       # DESIGN TOKENS
       # DE-agnostic data every adapter reads. The default below is the base look;
       # a composed theme module (themes/*.mod.nix) overrides `theme` wholesale.
-      colorOption = mkOption { type = str; };
+
+      # A colour token. Written as `#rrggbb` and read back as every spelling
+      # the adapters need, because they do not agree on one: foot wants the
+      # bare digits, qt6ct wants `#aarrggbb` with alpha first, KDE colour
+      # schemes want a decimal triplet. Each of those used to be its own
+      # helper — one in `lib/`, two inline — so the same conversion existed
+      # three times and no consumer could see which spelling it was getting.
+      #
+      # `apply` puts them on the option instead. The conversion lives once,
+      # beside the data it converts; the type checks the input on the way in,
+      # so a mistyped token is an eval error rather than a colour that silently
+      # renders black; and every adapter reads a named field, which says at the
+      # call site which spelling it asked for.
+      colorOption = mkOption {
+        type = strMatching "#[0-9a-fA-F]{6}";
+        apply =
+          hex:
+          let
+            bare = removePrefix "#" hex;
+
+            byte =
+              offset:
+              foldl' (acc: digit: acc * 16 + hexDigits.${digit}) 0 (
+                stringToCharacters (toLower (substring offset 2 bare))
+              );
+          in
+          {
+            inherit bare hex;
+
+            # qt6ct colour scheme values are #AARRGGBB, alpha first.
+            argb = "#ff${bare}";
+
+            # KDE colour schemes take a decimal r,g,b triplet.
+            rgb = "${toString (byte 0)},${toString (byte 2)},${toString (byte 4)}";
+          };
+      };
     in
     {
       options.theme = mkOption {

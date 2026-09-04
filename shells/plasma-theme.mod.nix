@@ -7,14 +7,11 @@
       inherit (osConfig) theme;
       inherit (theme) palette;
 
-      color = import ../lib/color.nix { inherit lib; };
-      inherit (color) toRgb;
-
       fontSpec = name: "${name},${toString theme.font.size.normal},-1,5,50,0,0,0,0,0";
 
       colors = bg: fg: {
-        BackgroundNormal = toRgb bg;
-        ForegroundNormal = toRgb fg;
+        BackgroundNormal = bg.rgb;
+        ForegroundNormal = fg.rgb;
       };
     in
     {
@@ -34,17 +31,17 @@
           };
 
           "Colors:Window" = colors palette.surface palette.text // {
-            BackgroundAlternate = toRgb palette.overlay;
-            ForegroundInactive = toRgb palette.muted;
+            BackgroundAlternate = palette.overlay.rgb;
+            ForegroundInactive = palette.muted.rgb;
           };
 
           "Colors:View" = colors palette.base palette.text // {
-            BackgroundAlternate = toRgb palette.surface;
-            ForegroundInactive = toRgb palette.muted;
+            BackgroundAlternate = palette.surface.rgb;
+            ForegroundInactive = palette.muted.rgb;
           };
 
           "Colors:Button" = colors palette.surface palette.text // {
-            BackgroundAlternate = toRgb palette.overlay;
+            BackgroundAlternate = palette.overlay.rgb;
           };
 
           "Colors:Selection" = colors palette.accent palette.accentText;
