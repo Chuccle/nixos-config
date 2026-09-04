@@ -1,13 +1,10 @@
 {
   flake.homeModules.foot =
-    { lib, osConfig, ... }:
+    { osConfig, ... }:
     let
-      inherit (lib.strings) removePrefix;
-
       inherit (osConfig) theme;
       inherit (theme) palette;
 
-      hex = removePrefix "#";
       glass = theme.blur.enable;
     in
     {
@@ -29,29 +26,29 @@
             # `surface`, not `base` — `base` is the desktop backdrop tone
             # (win95's is the literal teal wallpaper color), so using it here
             # made the terminal window blend into the desktop behind it.
-            background = hex palette.surface;
-            foreground = hex palette.text;
+            background = palette.surface.bare;
+            foreground = palette.text.bare;
 
-            regular0 = hex palette.surface;
-            regular1 = hex palette.red;
-            regular2 = hex palette.green;
-            regular3 = hex palette.yellow;
-            regular4 = hex palette.blue;
-            regular5 = hex palette.accent;
-            regular6 = hex palette.blue;
-            regular7 = hex palette.subtext;
+            regular0 = palette.surface.bare;
+            regular1 = palette.red.bare;
+            regular2 = palette.green.bare;
+            regular3 = palette.yellow.bare;
+            regular4 = palette.blue.bare;
+            regular5 = palette.accent.bare;
+            regular6 = palette.blue.bare;
+            regular7 = palette.subtext.bare;
 
-            bright0 = hex palette.muted;
-            bright1 = hex palette.red;
-            bright2 = hex palette.green;
-            bright3 = hex palette.yellow;
-            bright4 = hex palette.blue;
-            bright5 = hex palette.accent;
-            bright6 = hex palette.blue;
-            bright7 = hex palette.text;
+            bright0 = palette.muted.bare;
+            bright1 = palette.red.bare;
+            bright2 = palette.green.bare;
+            bright3 = palette.yellow.bare;
+            bright4 = palette.blue.bare;
+            bright5 = palette.accent.bare;
+            bright6 = palette.blue.bare;
+            bright7 = palette.text.bare;
 
-            "selection-foreground" = hex palette.accentText;
-            "selection-background" = hex palette.accent;
+            "selection-foreground" = palette.accentText.bare;
+            "selection-background" = palette.accent.bare;
 
             # GLASS: same opacity token the shell popups/dock use, so the
             # terminal's translucency matches. Flat themes (blur.enable =

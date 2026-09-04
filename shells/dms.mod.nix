@@ -353,28 +353,28 @@
         value = {
           inherit (theme) name;
 
-          primary = palette.accent;
-          primaryText = palette.accentText;
-          primaryContainer = palette.overlay;
-          secondary = palette.blue;
+          primary = palette.accent.hex;
+          primaryText = palette.accentText.hex;
+          primaryContainer = palette.overlay.hex;
+          secondary = palette.blue.hex;
 
-          inherit (palette) surface;
-          surfaceText = palette.text;
-          surfaceVariant = palette.overlay;
-          surfaceVariantText = palette.subtext;
-          surfaceTint = palette.accent;
+          surface = palette.surface.hex;
+          surfaceText = palette.text.hex;
+          surfaceVariant = palette.overlay.hex;
+          surfaceVariantText = palette.subtext.hex;
+          surfaceTint = palette.accent.hex;
 
-          background = palette.base;
-          backgroundText = palette.text;
-          outline = palette.muted;
+          background = palette.base.hex;
+          backgroundText = palette.text.hex;
+          outline = palette.muted.hex;
 
-          surfaceContainer = palette.surface;
-          surfaceContainerHigh = palette.overlay;
-          surfaceContainerHighest = palette.overlay;
+          surfaceContainer = palette.surface.hex;
+          surfaceContainerHigh = palette.overlay.hex;
+          surfaceContainerHighest = palette.overlay.hex;
 
-          error = palette.red;
-          warning = palette.yellow;
-          info = palette.blue;
+          error = palette.red.hex;
+          warning = palette.yellow.hex;
+          info = palette.blue.hex;
         };
       };
 
