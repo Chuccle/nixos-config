@@ -22,7 +22,7 @@
       ...
     }:
     let
-      inherit (lib.generators) toINI;
+      inherit (lib.generators) toINI toKeyValue;
       inherit (lib.lists) singleton;
       inherit (lib.strings) concatStringsSep;
 
@@ -183,19 +183,24 @@
         };
       };
 
-      xdg.config.files."qt6ct/colors/${theme.name}.conf".text = ''
-        [ColorScheme]
-        active_colors=${active}
-        inactive_colors=${inactive}
-        disabled_colors=${disabled}
-      '';
+      xdg.config.files."qt6ct/colors/${theme.name}.conf" = {
+        generator = toINI { };
+        value.ColorScheme = {
+          active_colors = active;
+          inactive_colors = inactive;
+          disabled_colors = disabled;
+        };
+      };
 
       # DMS's session runtime defaults launched apps to gtk3 passthrough; its
       # documented override point is environment.d, and 95- sorts after DMS's
       # own 90-dms.conf so this wins in the systemd user manager too.
-      xdg.config.files."environment.d/95-qt6ct.conf".text = ''
-        QT_QPA_PLATFORMTHEME=qt6ct
-        QT_QPA_PLATFORMTHEME_QT6=qt6ct
-      '';
+      xdg.config.files."environment.d/95-qt6ct.conf" = {
+        generator = toKeyValue { };
+        value = {
+          QT_QPA_PLATFORMTHEME = "qt6ct";
+          QT_QPA_PLATFORMTHEME_QT6 = "qt6ct";
+        };
+      };
     };
 }
