@@ -129,6 +129,32 @@ let
       ...
     }:
     let
+      # WEB DASHBOARD
+      # `embedded-web` bakes `web/dist` into the binary via `include_dir!`.
+      # It is not part of the crate's `default` feature set, and the packaged
+      # build runs `npm run build` but installs only the cargo binaries — so
+      # without this the dashboard is compiled and then thrown away, and the
+      # gateway answers every non-API route with its 503 "Web dashboard not
+      # available" page. Upstream's other option is serving the directory
+      # from disk via `gateway.web_dist_dir`, but that needs the same rebuild
+      # just to get `web/dist` into the store, so embedding is the shorter
+      # path to the same result.
+      #
+      # `cargoBuildFeatures` is the attribute `cargoBuildHook` actually
+      # reads. `buildFeatures` is an argument to `buildRustPackage` itself
+      # and is already consumed by the time `overrideAttrs` runs, so setting
+      # that name here would be accepted and then ignored.
+      #
+      # This does cost the numtide binary cache — the override changes the
+      # derivation, so the Rust workspace is built from source.
+      zeroclaw =
+        let
+          upstream = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zeroclaw;
+        in
+        upstream.overrideAttrs (old: {
+          cargoBuildFeatures = (old.cargoBuildFeatures or [ ]) ++ singleton "embedded-web";
+        });
+
       # The ladder crosses into the provisioning script as data, not as
       # generated shell — one JSON file the script iterates with jq.
       providersJson = pkgs.writers.writeJSON "zeroclaw-providers.json" (
@@ -145,7 +171,7 @@ let
         runtimeInputs = [
           pkgs.coreutils
           pkgs.gnugrep
-          inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zeroclaw
+          zeroclaw
         ];
         runtimeEnv = {
           CONFIG_DIR = instanceCfg.dataDir;
@@ -159,7 +185,7 @@ let
 
       environment.systemPackages = [
         pkgs.git
-        inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zeroclaw
+        zeroclaw
 
         # PROVISIONING
         # Interactive, operator-run, never touched at boot. The ladder reaches
@@ -195,7 +221,7 @@ let
       # state directory, loads the env file, and applies a hardening profile
       # modelled on services.atticd — so none of that is reimplemented here.
       services.zeroclaw.instances.${instanceName} = {
-        package = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zeroclaw;
+        package = zeroclaw;
 
         # The unit carries ConditionPathExists on this, so before the operator
         # has run `zeroclaw-keys` the agent stays cleanly inactive instead of
