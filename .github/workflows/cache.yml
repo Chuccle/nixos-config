@@ -4,10 +4,23 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A cache-population workflow is worth being able to start by hand: after a
+  # lock bump, or to refill the cache without an empty commit to trigger it.
+  workflow_dispatch:
+
+# Nothing here writes to the repository. The token still needs `contents: read`
+# so the checkout works and so install-nix-action can hand nix an authenticated
+# github.com fetcher.
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # PR churn is worth cancelling — a superseded run is building a commit nobody
+  # will merge. A push to main is not: that run is the one filling the cache for
+  # every later build, and killing it half way means the next run re-pays
+  # whatever it had already compiled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # `checks` covers every host toplevel and the three lint checks; `devShells`
@@ -15,6 +28,13 @@ jobs:
   # (rather than a bare `--flake .`) avoids recursing into `self.inputs`.
   build:
     runs-on: ubuntu-latest
+    # A warm run is single-digit minutes; GitHub's own ceiling is six hours.
+    # This sits far enough above the first that a legitimately cold build never
+    # trips it, and far enough below the second that a run which has stopped
+    # substituting and started compiling everything fails visibly instead of
+    # grinding on unwatched. Standard runners are free on a public repository,
+    # so what this protects is attention, not a minutes budget.
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       # Independent runners, so independent logs and independent failures.
@@ -48,6 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: ${{ !cancelled() }}
+    timeout-minutes: 150
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
