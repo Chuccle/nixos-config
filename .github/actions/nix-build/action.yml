@@ -38,16 +38,32 @@ runs:
     # the deprecated-Node treadmill. It hands nix the job's own GITHUB_TOKEN as
     # `access-tokens = github.com=...`, which takes flake input fetches off the
     # shared unauthenticated rate limit.
+    #
+    # The substituters are repeated here rather than left to the flake's
+    # nixConfig, because nix-fast-build never builds a flake reference: it
+    # evaluates `.#<attr>` with nix-eval-jobs and then runs `nix build` on the
+    # resulting *store paths* (nix_fast_build/build.py). A store path carries no
+    # flake, so there is nothing for the CLI to read nixConfig from at the point
+    # the substituters are actually needed. Written into /etc/nix/nix.conf they
+    # apply to every nix invocation in the job, and to the daemon rather than
+    # only to a trusted client.
+    #
+    # Same four as flake.nix, which stays as it is for anyone building this
+    # flake by hand; `modules/nix.mod.nix` and `modules/cachy.mod.nix` carry
+    # them for the machines. Three consumers, three places — keep them in step.
     - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
       with:
         install_url: https://releases.nixos.org/nix/nix-2.34.7/install
         extra_nix_config: |
           experimental-features = nix-command flakes pipe-operators
           accept-flake-config = true
+          extra-substituters = https://attic.xuyh0120.win/lantian https://cache.numtide.com https://chuccle.cachix.org https://nix-community.cachix.org
+          extra-trusted-public-keys = lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
 
     # Installs the `cachix` binary that --cachix-cache shells out to, and
     # authenticates it for the push. It also configures chuccle as a
-    # substituter so previously-built outputs are pulled instead of rebuilt.
+    # substituter, which the extra_nix_config above does as well — that part is
+    # redundant here, and kept as insurance against a typo in the key.
     # skipPush: nix-fast-build does the push.
     - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
       with:
