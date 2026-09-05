@@ -77,10 +77,17 @@ let
   # behaviour a daily quota actually needs.
   #
   # Model ids are vendor-side names and they drift. These are the ones this
-  # repo audited for the ZeroClaw ladder on 2026-09-03 (Cerebras' public docs
-  # table, Groq's rate-limit table, and a keyless fetch of OpenRouter's
-  # /models endpoint); reusing them keeps the two hosts from disagreeing about
-  # what is live. A stale id degrades rather than breaks — LiteLLM cools that
+  # repo audited for the ZeroClaw ladder (Cerebras' public docs table, Groq's
+  # rate-limit table, a keyless fetch of OpenRouter's /models endpoint), plus
+  # gemini-3.6-flash/gemini-3.5-flash-lite confirmed live against the AI
+  # Studio key on 2026-09-05 after gemini-2.5-flash/-lite 404'd here too
+  # ("no longer available to new users") — same key as ZeroClaw, same
+  # deprecation. groq/openai/gpt-oss-20b replaces llama-3.1-8b-instant the
+  # same day: Groq dropped its whole Llama lineup from this key's catalog,
+  # same as it once dropped Cerebras' — confirmed via a live /v1/models
+  # fetch, no Llama model of any kind left. Reusing one audited set keeps
+  # the two hosts from disagreeing
+  # about what is live. A stale id degrades rather than breaks — LiteLLM cools that
   # deployment down on the vendor's 404 and the ladder continues — but unlike
   # the ZeroClaw host there is no drift timer auditing it here, and that gap is
   # deliberate: LiteLLM's equivalent is `background_health_checks`, which
@@ -105,7 +112,7 @@ let
         tools = true;
       }
       {
-        model = "gemini/gemini-2.5-flash";
+        model = "gemini/gemini-3.6-flash";
         keyEnv = "GEMINI_API_KEY";
         tools = true;
       }
@@ -113,12 +120,12 @@ let
 
     ${fast} = [
       {
-        model = "groq/llama-3.1-8b-instant";
+        model = "groq/openai/gpt-oss-20b";
         keyEnv = "GROQ_API_KEY";
         tools = true;
       }
       {
-        model = "gemini/gemini-2.5-flash-lite";
+        model = "gemini/gemini-3.5-flash-lite";
         keyEnv = "GEMINI_API_KEY";
         tools = true;
       }
