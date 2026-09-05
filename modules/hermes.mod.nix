@@ -240,6 +240,18 @@
           # the service does, instead of being offered an update path that
           # cannot work.
           "f+ ${cfg.stateDir}/.managed 0444 ${cfg.user} ${cfg.group} - nixos"
+
+          # _ensure_hermes_home_managed()'s hard-required list (hermes_cli/
+          # config.py): the setup wizard normally creates these, HERMES_MANAGED
+          # blocks that wizard along with the update path, and the dashboard
+          # exits with "RuntimeError: <path>/<subdir> does not exist." on
+          # every start for whichever one activation didn't provide.
+        ]
+        ++ map (subdir: "d ${cfg.stateDir}/${subdir} 0755 ${cfg.user} ${cfg.group} -") [
+          "cron"
+          "sessions"
+          "logs"
+          "memories"
         ];
 
         systemd.services.hermes-dashboard = {
