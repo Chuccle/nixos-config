@@ -7,18 +7,28 @@
 let
   inherit (lib.attrsets)
     listToAttrs
+    mapAttrs
     mapAttrsToList
     nameValuePair
     optionalAttrs
     ;
   inherit (lib.lists)
     concatLists
+    groupBy
+    head
     imap1
     singleton
+    tail
     unique
     ;
+  inherit (lib.meta) getExe;
   inherit (lib.modules) mkForce;
-  inherit (lib.strings) fileContents replaceStrings;
+  inherit (lib.strings)
+    concatStringsSep
+    fileContents
+    replaceStrings
+    splitString
+    ;
 
   # ADDRESSES
   # The gateway holds every vendor credential and the memory server is a
@@ -201,6 +211,68 @@ let
     |> concatLists
     |> unique;
 
+  # DRIFT CHECK
+  # `model` in the ladder above is LiteLLM's own `<vendor>/<vendor-side-id>`
+  # addressing — the same split every deployment already carries, reused
+  # here rather than restated. `vendorOf`/`rawModelOf` undo it once so the
+  # check script gets bare vendor-side ids to compare against each vendor's
+  # own `/models` catalog, which speaks bare ids too.
+  vendorOf = model: head (splitString "/" model);
+  rawModelOf = model: concatStringsSep "/" (tail (splitString "/" model));
+
+  # Per-vendor catalog metadata: where to fetch the live list, how the key
+  # goes in (Gemini's is a query param, the other three are bearer headers),
+  # and the jq filter that pulls bare ids out of that vendor's response
+  # shape. `idPath` is data specifically so Gemini's `models/<id>` prefix
+  # (unlike the other three's flat `id` field) needs no branch in the
+  # script itself.
+  vendorCatalogMeta = {
+    groq = {
+      url = "https://api.groq.com/openai/v1/models";
+      authMode = "bearer";
+      idPath = ".data[].id";
+    };
+    cerebras = {
+      url = "https://api.cerebras.ai/v1/models";
+      authMode = "bearer";
+      idPath = ".data[].id";
+    };
+    openrouter = {
+      url = "https://openrouter.ai/api/v1/models";
+      authMode = "bearer";
+      idPath = ".data[].id";
+    };
+    gemini = {
+      url = "https://generativelanguage.googleapis.com/v1beta/models";
+      authMode = "query_key";
+      idPath = ''.models[].name | ltrimstr("models/")'';
+    };
+  };
+
+  # Every rung's model + keyEnv, split into vendor + bare id and grouped back
+  # up by vendor — a request per unique vendor rather than one per rung,
+  # since two groups often share a vendor (both Groq entries, both Gemini
+  # entries). `keyEnv` is carried through from the rung rather than guessed
+  # from the vendor name, since it is already the one place that mapping is
+  # spelled out.
+  catalogSpec =
+    ladder
+    |> mapAttrsToList (_group: rungs: map ({ model, keyEnv, ... }: { inherit model keyEnv; }) rungs)
+    |> concatLists
+    |> map (rung: {
+      vendor = vendorOf rung.model;
+      rawModel = rawModelOf rung.model;
+      inherit (rung) keyEnv;
+    })
+    |> groupBy (entry: entry.vendor)
+    |> mapAttrs (
+      _vendor: entries: {
+        models = unique (map (e: e.rawModel) entries);
+        inherit ((head entries)) keyEnv;
+      }
+    )
+    |> mapAttrsToList (vendor: rest: vendorCatalogMeta.${vendor} // rest // { inherit vendor; });
+
   modules = [
     "${inputs.nixpkgs}/nixos/modules/virtualisation/proxmox-lxc.nix"
     self.nixosModules.security
@@ -237,6 +309,21 @@ let
 
         text = fileContents ./hermes-keys.sh;
       };
+
+      checkModelsScript = pkgs.writeShellApplication {
+        name = "hermes-check-models";
+        runtimeInputs = [
+          pkgs.coreutils
+          pkgs.curl
+          pkgs.gnugrep
+          pkgs.jq
+        ];
+        runtimeEnv = {
+          CATALOG_SPEC = pkgs.writers.writeJSON "hermes-catalog-spec.json" catalogSpec;
+        };
+
+        text = fileContents ./hermes-check-models.sh;
+      };
     in
     {
       shell.default = "bash";
@@ -252,6 +339,8 @@ let
         # four vendor keys and a dashboard password, mints everything else
         # itself, and writes one 0400 env file per unit.
         keysScript
+
+        checkModelsScript
       ];
 
       # The module owns the directory and the mode; `hermes-keys` owns the
@@ -734,6 +823,44 @@ let
           MemoryHigh = "1536M";
           CPUQuota = "200%";
           TasksMax = 1024;
+        };
+      };
+
+      # ----------------------------------------------------------------
+      # SELF-AUDIT
+      # ----------------------------------------------------------------
+      #
+      # LiteLLM only discovers a stale rung when a request already hits it —
+      # it cools down and the ladder falls through, silently. This runs the
+      # same catalog-listing check weekly and turns a drifted id into a real
+      # failed-unit signal instead of a bench that nobody reads the journal
+      # for. See hermes-check-models.sh for why this isn't LiteLLM's own
+      # `background_health_checks`.
+
+      systemd.services.hermes-check-models = {
+        description = "Hermes free-tier ladder catalog-drift check";
+        after = singleton "litellm.service";
+        unitConfig.ConditionPathExists = envFileFor "litellm";
+
+        serviceConfig = {
+          Type = "oneshot";
+          EnvironmentFile = envFileFor "litellm";
+          ExecStart = getExe checkModelsScript;
+
+          DynamicUser = true;
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+          ProtectSystem = "strict";
+          ProtectHome = true;
+        };
+      };
+
+      systemd.timers.hermes-check-models = {
+        description = "Weekly Hermes catalog-drift check";
+        wantedBy = singleton "timers.target";
+        timerConfig = {
+          OnCalendar = "Mon *-*-* 06:00:00";
+          Persistent = true;
         };
       };
 
