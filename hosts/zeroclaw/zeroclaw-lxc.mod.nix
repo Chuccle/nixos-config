@@ -349,6 +349,11 @@ let
       systemd.services."zeroclaw-${instanceName}" = {
         after = singleton "secrets-bootstrap.service";
 
+        # Upstream's hardened PATH has no shell package, so the agent's
+        # shell tool failed every call with `sh not found on PATH`. Extends
+        # rather than replaces the existing PATH.
+        path = singleton pkgs.bash;
+
         serviceConfig = {
           MemoryMax = "1536M";
           MemoryHigh = "1280M";
