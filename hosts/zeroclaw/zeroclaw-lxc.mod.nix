@@ -47,22 +47,25 @@ let
   # `:free` IDs had rotated out of the catalog entirely. Groq's head model also
   # moves to gpt-oss-120b here: same 1K req/day as llama-3.3-70b-versatile but
   # double the token budget (200K vs ~100K TPD) on a comparable-or-stronger
-  # model, with the two Llamas kept as within-vendor fallback. Gemini moved
-  # 2026-09-05: gemini-2.5-flash/-lite now 404 for this key ("no longer
-  # available to new users"), confirmed live against the AI Studio key —
-  # gemini-3.6-flash/gemini-3.5-flash-lite (no 3.6 lite exists yet) both
-  # verified working. OpenCode Zen added 2026-09-05. Its keyless /models
-  # listing includes many `-free`-suffixed IDs, but most aren't real: an
-  # authenticated key sees a different, unsuffixed catalog, and posting the
-  # keyless names to /chat/completions 401s regardless of auth. Confirmed
-  # working set is smaller and vendor-documented, not name-pattern-derived.
+  # model. Gemini moved 2026-09-05: gemini-2.5-flash/-lite now 404 for this
+  # key ("no longer available to new users"), confirmed live against the AI
+  # Studio key — gemini-3.6-flash/gemini-3.5-flash-lite (no 3.6 lite exists
+  # yet) both verified working. Both Llama fallbacks went the same day: Groq
+  # dropped the whole Llama lineup from this key too (empty of any Llama
+  # model on a live /v1/models fetch), same as it once dropped Cerebras' —
+  # replaced with gpt-oss-20b, the smaller sibling of the head model, since
+  # nothing else on this key's catalog fits the fallback's job. OpenCode Zen
+  # added 2026-09-05. Its keyless /models listing includes many
+  # `-free`-suffixed IDs, but most aren't real: an authenticated key sees a
+  # different, unsuffixed catalog, and posting the keyless names to
+  # /chat/completions 401s regardless of auth. Confirmed working set is
+  # smaller and vendor-documented, not name-pattern-derived.
   ladder = [
     {
       family = "groq";
       models = [
         "openai/gpt-oss-120b"
-        "llama-3.3-70b-versatile"
-        "llama-3.1-8b-instant"
+        "openai/gpt-oss-20b"
       ];
     }
     {
