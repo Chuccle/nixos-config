@@ -10,19 +10,19 @@
 # risk and passes with zero gating. A standalone systemd unit sidesteps that
 # entirely: nothing here is agent-invocable.
 #
-# `zeroclaw models list --check --all` classifies a stale primary model as a
-# *warning*, not a failure, and always exits 0 when checking `--all` — it
-# only bails on a verify failure for a single `--model-provider` target with
-# zero models verified. So this wrapper reads the check's own output back and
-# turns a drifted model into an actual failed systemd unit, which is the
-# entire point of running it on a timer instead of by hand.
+# `zeroclaw models list --check` (no `--model-provider` defaults to every
+# configured entry) only warns on a stale model and always exits 0, so this
+# wrapper greps its output and turns a drift warning into a failed unit —
+# the entire point of running it on a timer. No `--all` flag on this binary
+# (0.8.4): it was there originally and silently broke every run since this
+# timer was written.
 #
 # Environment:
 #   CONFIG_DIR  the running instance's state dir (holds the rendered config.toml)
 
 set -uo pipefail
 
-out="$(zeroclaw models list --check --all --config-dir "$CONFIG_DIR" 2>&1)"
+out="$(zeroclaw models list --check --config-dir "$CONFIG_DIR" 2>&1)"
 status=$?
 
 echo "$out"
