@@ -51,9 +51,11 @@ let
   # as-is — gemini-2.5-flash/-lite are still live, just no longer the newest
   # generation (Gemini 3.x exists now); leave it pinned rather than guess a
   # fast-moving version string that can't be checked without an AI Studio
-  # login. OpenCode Zen added 2026-09-05: its /models catalog is keyless and
-  # marks free-tier IDs with a `-free` suffix, same convention as
-  # OpenRouter's `:free`.
+  # login. OpenCode Zen added 2026-09-05. Its keyless /models listing
+  # includes many `-free`-suffixed IDs, but most aren't real: an
+  # authenticated key sees a different, unsuffixed catalog, and posting the
+  # keyless names to /chat/completions 401s regardless of auth. Confirmed
+  # working set is smaller and vendor-documented, not name-pattern-derived.
   ladder = [
     {
       family = "groq";
@@ -87,8 +89,11 @@ let
     {
       family = "opencode";
       models = [
-        "minimax-m3-free"
-        "kimi-k2.5-free"
+        "big-pickle"
+        "mimo-v2.5-free"
+        "ling-3.0-flash-fin-free"
+        "nemotron-3-ultra-free"
+        "nemotron-3.5-lightning-free"
       ];
     }
   ];
