@@ -47,12 +47,12 @@ let
   # `:free` IDs had rotated out of the catalog entirely. Groq's head model also
   # moves to gpt-oss-120b here: same 1K req/day as llama-3.3-70b-versatile but
   # double the token budget (200K vs ~100K TPD) on a comparable-or-stronger
-  # model, with the two Llamas kept as within-vendor fallback. Gemini is left
-  # as-is — gemini-2.5-flash/-lite are still live, just no longer the newest
-  # generation (Gemini 3.x exists now); leave it pinned rather than guess a
-  # fast-moving version string that can't be checked without an AI Studio
-  # login. OpenCode Zen added 2026-09-05. Its keyless /models listing
-  # includes many `-free`-suffixed IDs, but most aren't real: an
+  # model, with the two Llamas kept as within-vendor fallback. Gemini moved
+  # 2026-09-05: gemini-2.5-flash/-lite now 404 for this key ("no longer
+  # available to new users"), confirmed live against the AI Studio key —
+  # gemini-3.6-flash/gemini-3.5-flash-lite (no 3.6 lite exists yet) both
+  # verified working. OpenCode Zen added 2026-09-05. Its keyless /models
+  # listing includes many `-free`-suffixed IDs, but most aren't real: an
   # authenticated key sees a different, unsuffixed catalog, and posting the
   # keyless names to /chat/completions 401s regardless of auth. Confirmed
   # working set is smaller and vendor-documented, not name-pattern-derived.
@@ -75,8 +75,8 @@ let
     {
       family = "gemini";
       models = [
-        "gemini-2.5-flash"
-        "gemini-2.5-flash-lite"
+        "gemini-3.6-flash"
+        "gemini-3.5-flash-lite"
       ];
     }
     {
