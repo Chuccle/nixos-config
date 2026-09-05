@@ -51,7 +51,9 @@ let
   # as-is — gemini-2.5-flash/-lite are still live, just no longer the newest
   # generation (Gemini 3.x exists now); leave it pinned rather than guess a
   # fast-moving version string that can't be checked without an AI Studio
-  # login.
+  # login. OpenCode Zen added 2026-09-05: its /models catalog is keyless and
+  # marks free-tier IDs with a `-free` suffix, same convention as
+  # OpenRouter's `:free`.
   ladder = [
     {
       family = "groq";
@@ -80,6 +82,13 @@ let
       models = [
         "z-ai/glm-5.2:free"
         "nvidia/nemotron-3-super-120b-a12b:free"
+      ];
+    }
+    {
+      family = "opencode";
+      models = [
+        "minimax-m3-free"
+        "kimi-k2.5-free"
       ];
     }
   ];
