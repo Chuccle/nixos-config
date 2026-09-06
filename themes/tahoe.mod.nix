@@ -67,6 +67,13 @@
           green = "#32d74b";
           yellow = "#ffd60a";
           blue = "#0a84ff";
+
+          # Glass is lit from above: a white specular hairline along the top
+          # edge and a black cast shadow underneath. Both are pure rather than
+          # tinted from `base` — a shadow the colour of the surface it falls
+          # on reads as a grey border instead of depth.
+          edgeLight = "#ffffff";
+          edgeShade = "#000000";
         };
 
         blur.enable = true;

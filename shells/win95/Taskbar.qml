@@ -70,7 +70,7 @@ PanelWindow {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Start"
+                text: Tokens.startLabel
                 font.family: Tokens.fontFamily
                 font.pixelSize: Tokens.fontSize
                 font.bold: true
@@ -170,7 +170,7 @@ PanelWindow {
             required property Toplevel modelData
 
             window: modelData
-            width: Math.min(200, ListView.view.width / Math.max(1, ListView.view.count))
+            width: Math.min(Tokens.taskButtonWidth, ListView.view.width / Math.max(1, ListView.view.count))
             height: ListView.view.height
         }
     }

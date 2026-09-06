@@ -12,16 +12,17 @@
         toLower
         ;
       inherit (lib.types)
+        addCheck
         bool
         float
-        int
+        nonEmptyStr
         nullOr
         package
         path
-        str
         strMatching
         submodule
         ;
+      inherit (lib.types.ints) unsigned;
 
       hexDigits = {
         "0" = 0;
@@ -87,36 +88,43 @@
         description = "Active theme tokens.";
         type = submodule {
           options = {
+            # Spliced into generated file names (`qt6ct/colors/<name>.conf`),
+            # so it is constrained to what is safe there rather than left as
+            # free-form text.
             name = mkOption {
-              type = str;
+              type = strMatching "[a-z0-9-]+";
               description = "Identifier of the active theme.";
             };
 
-            cornerRadius = mkOption { type = int; };
-            borderWidth = mkOption { type = int; };
+            # Every geometry token is a distance in pixels: negative is never
+            # meaningful, and `unsigned` says so at the type rather than
+            # leaving a `-1` to surface as a rendering fault three adapters
+            # downstream.
+            cornerRadius = mkOption { type = unsigned; };
+            borderWidth = mkOption { type = unsigned; };
 
-            margin = mkOption { type = int; };
-            padding = mkOption { type = int; };
+            margin = mkOption { type = unsigned; };
+            padding = mkOption { type = unsigned; };
 
-            font.size.normal = mkOption { type = int; };
-            font.size.big = mkOption { type = int; };
+            font.size.normal = mkOption { type = unsigned; };
+            font.size.big = mkOption { type = unsigned; };
 
-            font.sans.name = mkOption { type = str; };
+            font.sans.name = mkOption { type = nonEmptyStr; };
             font.sans.package = mkOption { type = package; };
 
-            font.mono.name = mkOption { type = str; };
+            font.mono.name = mkOption { type = nonEmptyStr; };
             font.mono.package = mkOption { type = package; };
 
-            icons.name = mkOption { type = str; };
+            icons.name = mkOption { type = nonEmptyStr; };
             icons.package = mkOption { type = package; };
 
-            gtk.name = mkOption { type = str; };
+            gtk.name = mkOption { type = nonEmptyStr; };
             gtk.package = mkOption { type = package; };
 
-            cursor.name = mkOption { type = str; };
+            cursor.name = mkOption { type = nonEmptyStr; };
             cursor.package = mkOption { type = package; };
             cursor.size = mkOption {
-              type = int;
+              type = unsigned;
               default = 24;
             };
 
@@ -146,6 +154,16 @@
                   green = colorOption;
                   yellow = colorOption;
                   blue = colorOption;
+
+                  # EDGES
+                  # The two extreme tones an edge is drawn with: the lit side
+                  # and the side in shadow. Win95's 3D chrome is literally
+                  # white-on-black over silver, and Tahoe's glass is a bright
+                  # specular hairline over a cast shadow — the same pair of
+                  # roles, so both are one token pair rather than a constant
+                  # inlined in a QML file and another in a KDL node.
+                  edgeLight = colorOption;
+                  edgeShade = colorOption;
                 };
               };
             };
@@ -157,11 +175,14 @@
               default = false;
             };
             blur.radius = mkOption {
-              type = int;
+              type = unsigned;
               default = 0;
             };
+            # A fraction, so the type says so: 0.6 is glass, 60 is a value
+            # that silently renders every surface fully opaque wherever it is
+            # read as a multiplier.
             blur.opacity = mkOption {
-              type = float;
+              type = addCheck float (opacity: opacity >= 0.0 && opacity <= 1.0);
               default = 1.0;
             };
           };
@@ -213,6 +234,9 @@
           green = "#b8bb26";
           yellow = "#fabd2f";
           blue = "#83a598";
+
+          edgeLight = "#a89984";
+          edgeShade = "#000000";
         };
 
         blur.enable = false;

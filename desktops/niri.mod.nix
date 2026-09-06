@@ -2,6 +2,7 @@
   desktopModules.niri =
     { lib, pkgs, ... }:
     let
+      inherit (lib.attrsets) mapAttrsRecursive;
       inherit (lib.meta) getExe';
       inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
@@ -11,6 +12,15 @@
         str
         submodule
         ;
+
+      # PER-LEAF DEFAULTS
+      # `mkDefault` on the whole attrset is a single definition at one
+      # priority: a host that sets one field defines the option at a higher
+      # priority, `filterOverrides` then drops the default definition whole,
+      # and every field the host did not mention is suddenly unset. Applying
+      # it per leaf instead makes each field default on its own, which is what
+      # "a host can override any field" has always claimed.
+      defaults = mapAttrsRecursive (_path: mkDefault);
     in
     {
       # NIRI GLASS
@@ -26,9 +36,9 @@
             spread = mkOption { type = int; };
             offsetX = mkOption { type = int; };
             offsetY = mkOption { type = int; };
-            # Hex alpha byte (00-ff) appended to `theme.palette.base.hex`, not a
-            # 0-1 float, so it can be spliced directly into the KDL color
-            # string without a float->hex conversion helper.
+            # Hex alpha byte (00-ff) appended to `theme.palette.edgeShade.hex`,
+            # not a 0-1 float, so it can be spliced directly into the KDL
+            # color string without a float->hex conversion helper.
             opacityHex = mkOption { type = str; };
           };
         };
@@ -71,7 +81,7 @@
         # leaves that target inactive and the session empty.
         desktop.sessionCommand = getExe' pkgs.niri "niri-session";
 
-        niriShadow = mkDefault {
+        niriShadow = defaults {
           softness = 40;
           spread = 4;
           offsetX = 0;
@@ -83,7 +93,7 @@
         # the slight desaturation lift keeps colour behind the glass from
         # going flat, and a trace of noise stops wide blur from banding on a
         # gradient wallpaper.
-        niriBlur = mkDefault {
+        niriBlur = defaults {
           passes = 3;
           offset = 5.0;
           noise = 0.04;
@@ -205,7 +215,9 @@
                   y = niriShadow.offsetY;
                 };
               }
-              (leaf "color" [ "${palette.base.hex}${niriShadow.opacityHex}" ])
+              # `edgeShade`, not `base`: a shadow tinted with the backdrop
+              # colour it falls on reads as a grey outline rather than depth.
+              (leaf "color" [ "${palette.edgeShade.hex}${niriShadow.opacityHex}" ])
             ])
           ]
         ))

@@ -7,7 +7,7 @@
       ...
     }:
     let
-      inherit (lib.attrsets) mapAttrsToList;
+      inherit (lib.attrsets) mapAttrsRecursive mapAttrsToList;
       inherit (lib.meta) getExe getExe';
       inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
@@ -19,6 +19,15 @@
         str
         submodule
         ;
+
+      # PER-LEAF DEFAULTS
+      # `mkDefault` on the whole attrset is a single definition at one
+      # priority: a host that sets one field defines the option at a higher
+      # priority, `filterOverrides` then drops the default definition whole,
+      # and every field the host did not mention is suddenly unset. Applying
+      # it per leaf instead makes each field default on its own, which is what
+      # "a host can override any field" has always claimed.
+      defaults = mapAttrsRecursive (_path: mkDefault);
     in
     {
       # LABWC CONFIG SCHEMA
@@ -96,7 +105,7 @@
 
         # Win95 was strictly stacking, gapless, click-to-focus — and the
         # muscle memory is Alt+Tab / Alt+F4 / Win+E / Win+D.
-        labwcConfig = mkDefault {
+        labwcConfig = defaults {
           core = {
             gap = 0;
             adaptiveSync = "no";
