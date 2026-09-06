@@ -79,7 +79,7 @@ let
 
       corsPolicy = pkgs.writers.writeJSON "ente-bucket-cors.json" {
         CORSRules = singleton {
-          AllowedOrigins = map (d: "https://${d}") proxiedDomains;
+          AllowedOrigins = map (d: "https://${d}") proxiedDomains ++ singleton "ente://app";
           AllowedMethods = [
             "DELETE"
             "GET"
