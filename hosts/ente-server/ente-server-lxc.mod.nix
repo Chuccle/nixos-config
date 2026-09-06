@@ -11,9 +11,10 @@ let
 
   # PUBLIC NAMES
   # One source of truth for every hostname this box answers to. `ente.web`
-  # takes the four below by attribute name, while the nginx server blocks and
-  # the bucket's CORS policy are generated from the full set — so adding a
-  # name is a one-line change that cannot leave the three out of sync.
+  # takes the four below by attribute name, and the nginx server blocks are
+  # generated from the full set — so adding a name is a one-line change that
+  # cannot leave the two out of sync. The bucket's CORS policy no longer
+  # derives from this list; see corsPolicy below for why.
   domain = name: "ente-${name}.blorgydoo.com";
 
   webDomains = {
@@ -77,9 +78,15 @@ let
         text = fileContents ./garage-reconcile.sh;
       };
 
+      # Wildcarded rather than enumerated: this endpoint carries no ambient
+      # authority for CORS to gate (auth is entirely in the presigned query
+      # string, no cookies involved, objects are end-to-end encrypted), and
+      # an enumerated list is brittle in exactly the way that broke desktop
+      # downloads once already — an origin missing from the list fails as an
+      # opaque browser-side TypeError with no status, not a diagnosable 403.
       corsPolicy = pkgs.writers.writeJSON "ente-bucket-cors.json" {
         CORSRules = singleton {
-          AllowedOrigins = map (d: "https://${d}") proxiedDomains ++ singleton "ente://app";
+          AllowedOrigins = singleton "*";
           AllowedMethods = [
             "DELETE"
             "GET"
