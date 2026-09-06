@@ -40,6 +40,10 @@
             # not a 0-1 float, so it can be spliced directly into the KDL
             # color string without a float->hex conversion helper.
             opacityHex = mkOption { type = str; };
+
+            # The same for a window that is not focused. On a glass theme the
+            # shadow is the only thing marking focus, so the two differ.
+            inactiveOpacityHex = mkOption { type = str; };
           };
         };
       };
@@ -87,6 +91,7 @@
           offsetX = 0;
           offsetY = 8;
           opacityHex = "b3";
+          inactiveOpacityHex = "59";
         };
 
         # Three passes at a wide offset is the depth Tahoe's glass reads at;
@@ -190,7 +195,8 @@
             (leaf "gaps" [ theme.padding ])
             (leaf "center-focused-column" [ "never" ])
             (leaf "background-color" [ palette.base.hex ])
-
+          ]
+          ++ optionals (!glass) [
             (block "border" [
               (leaf "width" [ theme.borderWidth ])
               (leaf "active-color" [ palette.accent.hex ])
@@ -204,6 +210,19 @@
             ])
           ]
           ++ optionals glass [
+            {
+              name = "border";
+              comment = ''
+                A glass desktop marks the focused window by the depth of its
+                shadow, never by drawing a coloured frame around it: an accent
+                border on every focused window is the single loudest tell that
+                this is a tiling compositor rather than the design it is
+                dressed as. The shadow below does the work instead.'';
+              children = singleton (call "off");
+            }
+
+            (block "focus-ring" (singleton (call "off")))
+
             (block "shadow" [
               (call "on")
               (leaf "softness" [ niriShadow.softness ])
@@ -218,6 +237,7 @@
               # `edgeShade`, not `base`: a shadow tinted with the backdrop
               # colour it falls on reads as a grey outline rather than depth.
               (leaf "color" [ "${palette.edgeShade.hex}${niriShadow.opacityHex}" ])
+              (leaf "inactive-color" [ "${palette.edgeShade.hex}${niriShadow.inactiveOpacityHex}" ])
             ])
           ]
         ))
@@ -263,17 +283,21 @@
           ]
           ++ optionals glass [
             {
-              name = "opacity";
-              args = singleton theme.blur.opacity;
+              name = "background-effect";
               comment = ''
-                Windows have to be translucent for blur behind them to be
-                visible at all; blur.opacity is what every other surface in
-                the stack already tracks.'';
+                Blur behind windows, but no blanket opacity: on the design
+                this is dressed as, glass is the chrome — bars, docks,
+                sidebars, toolbars — and application windows are opaque.
+                Forcing every window translucent is the tell that gives a
+                rice away, and it makes light-on-light text unreadable. An
+                app that asks for transparency itself (foot sets
+                blur.opacity as its alpha) gets the blur; one that does not
+                stays solid, which is what a Mac looks like.'';
+              children = [
+                (leaf "xray" [ true ])
+                (leaf "blur" [ true ])
+              ];
             }
-            (block "background-effect" [
-              (leaf "xray" [ true ])
-              (leaf "blur" [ true ])
-            ])
           ]
         ))
       ]
@@ -281,16 +305,15 @@
         {
           name = "window-rule";
           comment = ''
-            Media opts back out of the glass: translucency over a moving
-            picture reads as a rendering fault, and there is nothing
-            meaningful behind a player worth blurring. niri 26.04 has no
-            is-fullscreen match property, so this keys on app id.'';
+            Media opts back out of the glass: there is nothing meaningful
+            behind a player worth blurring, and sampling a moving picture
+            every frame costs power for an effect nobody sees. niri 26.04
+            has no is-fullscreen match property, so this keys on app id.'';
           children = [
             {
               name = "match";
               props."app-id" = "^(mpv|org\\.kde\\.haruna|helium)$";
             }
-            (leaf "opacity" [ 1.0 ])
             (block "background-effect" [
               (leaf "blur" [ false ])
               (leaf "xray" [ false ])

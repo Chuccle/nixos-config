@@ -23,7 +23,11 @@
         cursor-theme-name = theme.cursor.name;
         cursor-theme-size = theme.cursor.size;
         font-name = "${theme.font.sans.name} ${toString theme.font.size.normal}";
-        application-prefer-dark-theme = 1;
+
+        # Asking for the dark variant of a light theme is how a GTK app ends
+        # up with dark widgets in a light window, so this tracks the palette
+        # rather than being pinned on.
+        application-prefer-dark-theme = if theme.appearance == "dark" then 1 else 0;
       };
     };
 }

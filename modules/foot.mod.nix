@@ -6,6 +6,28 @@
       inherit (theme) palette;
 
       glass = theme.blur.enable;
+      dark = theme.appearance == "dark";
+
+      # ANSI 0 and 7 are the ends of a grey ramp, not surfaces. On a dark
+      # theme "black" is the background tone and "white" the text tone; on a
+      # light one it is the other way round, and keeping the dark mapping
+      # there paints black text in a near-white colour on a near-white
+      # background.
+      ramp =
+        if dark then
+          {
+            black = palette.surface;
+            brightBlack = palette.muted;
+            white = palette.subtext;
+            brightWhite = palette.text;
+          }
+        else
+          {
+            black = palette.text;
+            brightBlack = palette.subtext;
+            white = palette.muted;
+            brightWhite = palette.overlay;
+          };
     in
     {
       # hjem-rum's own `foot` program module (same as zoxide.mod.nix already
@@ -20,32 +42,36 @@
           main = {
             font = "${theme.font.mono.name}:size=${toString theme.font.size.normal}";
             pad = "${toString theme.padding}x${toString theme.padding}";
+
+            # foot reads `colors-dark` unless told otherwise, so a light
+            # palette written to `colors-light` would sit there unused.
+            initial-color-theme = theme.appearance;
           };
 
-          "colors-dark" = {
+          "colors-${theme.appearance}" = {
             # `surface`, not `base` — `base` is the desktop backdrop tone
             # (win95's is the literal teal wallpaper color), so using it here
             # made the terminal window blend into the desktop behind it.
             background = palette.surface.bare;
             foreground = palette.text.bare;
 
-            regular0 = palette.surface.bare;
+            regular0 = ramp.black.bare;
             regular1 = palette.red.bare;
             regular2 = palette.green.bare;
             regular3 = palette.yellow.bare;
             regular4 = palette.blue.bare;
             regular5 = palette.accent.bare;
             regular6 = palette.blue.bare;
-            regular7 = palette.subtext.bare;
+            regular7 = ramp.white.bare;
 
-            bright0 = palette.muted.bare;
+            bright0 = ramp.brightBlack.bare;
             bright1 = palette.red.bare;
             bright2 = palette.green.bare;
             bright3 = palette.yellow.bare;
             bright4 = palette.blue.bare;
             bright5 = palette.accent.bare;
             bright6 = palette.blue.bare;
-            bright7 = palette.text.bare;
+            bright7 = ramp.brightWhite.bare;
 
             "selection-foreground" = palette.accentText.bare;
             "selection-background" = palette.accent.bare;

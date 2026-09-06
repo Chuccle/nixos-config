@@ -14,6 +14,7 @@
       inherit (lib.types)
         addCheck
         bool
+        enum
         float
         nonEmptyStr
         nullOr
@@ -94,6 +95,22 @@
             name = mkOption {
               type = strMatching "[a-z0-9-]+";
               description = "Identifier of the active theme.";
+            };
+
+            # WHICH END OF THE RAMP THE PALETTE SITS AT
+            # Not decoration: several consumers cannot infer it from the
+            # colours and get it visibly wrong if they guess. GTK's
+            # prefer-dark flag, foot's choice of ANSI black/white and of
+            # which `colors-*` section it reads, and DMS's session mode —
+            # which writes the desktop's own `color-scheme` preference, so
+            # libadwaita apps follow it — all read this.
+            appearance = mkOption {
+              type = enum [
+                "dark"
+                "light"
+              ];
+              default = "dark";
+              description = "Whether the palette is a dark or a light one.";
             };
 
             # Every geometry token is a distance in pixels: negative is never

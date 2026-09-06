@@ -13,8 +13,9 @@
     }:
     let
       inherit (lib.attrsets) mapAttrsRecursive;
-      inherit (lib.modules) mkDefault mkIf;
+      inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
+      inherit (lib.strings) optionalString;
       inherit (lib.types)
         addCheck
         bool
@@ -188,6 +189,30 @@
             rippleEffects = mkOption { type = bool; };
             waveProgress = mkOption { type = bool; };
 
+            # How tray icons are recoloured. A menu bar full of each app's own
+            # brand colours is the loudest difference between this bar and the
+            # one it is dressed as; "monochrome" is what macOS does.
+            trayIconTint = mkOption {
+              type = enum [
+                "none"
+                "monochrome"
+                "primary"
+                "secondary"
+              ];
+            };
+
+            # macOS names the focused app in bold and shows no icon for it.
+            focusedWindow.showIcon = mkOption { type = bool; };
+
+            # "spotlight" is DMS's minimal centred search bar; "full" is the
+            # grid launcher with mode tabs.
+            launcherStyle = mkOption {
+              type = enum [
+                "full"
+                "spotlight"
+              ];
+            };
+
             clock.format = mkOption {
               type = enum [
                 "auto"
@@ -196,6 +221,9 @@
               ];
             };
             clock.showSeconds = mkOption { type = bool; };
+
+            # Qt locale date pattern, or "" for the system default.
+            clock.dateFormat = mkOption { type = str; };
 
             # Empty means "leave it to DMS"; `str` rather than `path` because
             # that empty string is a legitimate value here.
@@ -223,24 +251,28 @@
 
       config = {
         dmsBar = defaults {
+          # MENU BAR
+          # Laid out as macOS's, which is a strict shape: the launcher stands
+          # in for the Apple menu, the focused app's name sits beside it, and
+          # everything else is pushed right with the clock outermost. Nothing
+          # occupies the centre — that space belongs to the app menus on a
+          # Mac, and a bar with widgets in the middle never reads as one.
+          # DMS's CPU, memory, clipboard and weather widgets have no menu-bar
+          # counterpart, so they are left out rather than dressed up as one;
+          # a host that wants them back adds them to `rightWidgets`.
           leftWidgets = [
             "launcherButton"
             "workspaceSwitcher"
             "focusedWindow"
           ];
-          centerWidgets = [
-            "music"
-            "clock"
-            "weather"
-          ];
+          centerWidgets = [ ];
           rightWidgets = [
+            "music"
             "systemTray"
-            "clipboard"
-            "cpuUsage"
-            "memUsage"
-            "notificationButton"
             "battery"
             "controlCenterButton"
+            "notificationButton"
+            "clock"
           ];
 
           spacing = 4;
@@ -333,7 +365,11 @@
           elevation.enable = theme.blur.enable;
           elevation.intensity = 12;
           elevation.opacity = 30;
-          elevation.bar = theme.blur.enable;
+
+          # Panels float and cast shadows; the menu bar does not. Tahoe's is
+          # a transparent strip fused to the top of the screen, and a shadow
+          # under it turns it back into a floating bar.
+          elevation.bar = false;
           elevation.popout = theme.blur.enable;
           elevation.modal = theme.blur.enable;
 
@@ -344,9 +380,15 @@
           rippleEffects = false;
           waveProgress = false;
 
-          # macOS runs a 12-hour menu-bar clock without seconds.
+          trayIconTint = "monochrome";
+          focusedWindow.showIcon = false;
+          launcherStyle = "spotlight";
+
+          # macOS runs a 12-hour menu-bar clock without seconds, with the
+          # weekday and date beside it: "Wed Apr 1  9:41 AM".
           clock.format = "12h";
           clock.showSeconds = false;
+          clock.dateFormat = "ddd MMM d";
 
           # The lock screen is the one wallpaper surface DMS takes from
           # settings.json rather than over IPC, so it can be set declaratively
@@ -388,16 +430,22 @@
         programs.dank-material-shell.systemd.enable = true;
         programs.dank-material-shell.enableDynamicTheming = false;
 
-        # WALLPAPER
-        # DMS draws its own wallpaper layer (covering swaybg and friends), and
-        # its documented interface for it is IPC: `dms ipc call wallpaper set
-        # <path>`. The shell's socket comes up asynchronously, so retry until
-        # it accepts. User units do not get the system profile on PATH, so the
-        # retry loop's deps are provided explicitly: `dms` itself, coreutils,
-        # and quickshell — `dms ipc` shells out to `qs`, so without it the
-        # call dies with `exec: "qs": … $PATH`.
-        systemd.user.services.dms-wallpaper = mkIf (theme.wallpaper != null) {
-          description = "Set the DMS wallpaper from theme tokens";
+        # APPEARANCE AND WALLPAPER
+        # Two things DMS keeps in its own session state rather than in the
+        # settings file we write, so both are set over its documented IPC.
+        #
+        # The mode is not cosmetic: DMS writes the desktop's own `color-scheme`
+        # preference when it changes, which is what libadwaita apps follow — so
+        # a light palette with DMS left in dark mode gets dark GTK apps in
+        # light window frames.
+        #
+        # The shell's socket comes up asynchronously, so retry until it
+        # accepts. User units do not get the system profile on PATH, so the
+        # loop's deps are provided explicitly: `dms` itself, coreutils, and
+        # quickshell — `dms ipc` shells out to `qs`, so without it the call
+        # dies with `exec: "qs": … $PATH`.
+        systemd.user.services.dms-appearance = {
+          description = "Apply the theme's appearance and wallpaper to DMS";
           wantedBy = [ "graphical-session.target" ];
           partOf = [ "graphical-session.target" ];
           after = [ "graphical-session.target" ];
@@ -410,7 +458,8 @@
           script = /* bash */ ''
             set -euo pipefail
             for _ in $(seq 30); do
-              if dms ipc call wallpaper set "${theme.wallpaper}"; then
+              if dms ipc call theme ${theme.appearance}; then
+                ${optionalString (theme.wallpaper != null) ''dms ipc call wallpaper set "${theme.wallpaper}"''}
                 exit 0
               fi
               sleep 1
@@ -509,7 +558,12 @@
         enableRippleEffects = dmsShell.rippleEffects;
         waveProgressEnabled = dmsShell.waveProgress;
 
+        systemTrayIconTintMode = dmsShell.trayIconTint;
+        focusedWindowShowIcon = dmsShell.focusedWindow.showIcon;
+        inherit (dmsShell) launcherStyle;
+
         clockFormat = dmsShell.clock.format;
+        clockDateFormat = dmsShell.clock.dateFormat;
         showSeconds = dmsShell.clock.showSeconds;
 
         lockScreenWallpaperPath = dmsShell.lockWallpaper;
@@ -561,8 +615,12 @@
         pkgs.runCommand "dms-settings.json"
           {
             nativeBuildInputs = [ pkgs.jq ];
-            passAsFile = [ "keys" ];
+            passAsFile = [
+              "keys"
+              "widgets"
+            ];
             keys = concatStringsSep "\n" (attrNames settings);
+            widgets = concatStringsSep "\n" (dmsBar.leftWidgets ++ dmsBar.centerWidgets ++ dmsBar.rightWidgets);
           }
           ''
             known="$(mktemp)"
@@ -573,6 +631,23 @@
             if [ -n "$unknown" ]; then
               echo "settings.json keys not present in this DankMaterialShell:" >&2
               echo "$unknown" >&2
+              exit 1
+            fi
+
+            # BAR WIDGETS
+            # A widget id the bar cannot resolve renders nothing and reports
+            # nothing, so the layout above is checked the same way the keys
+            # are: against WidgetHost's component map, which is what actually
+            # decides whether an id draws. Plugin widgets are namespaced
+            # `plugin:widget` and resolved at runtime, so they are skipped.
+            knownWidgets="$(mktemp)"
+            grep -oP '^\s*"\K[\w-]+(?=":\s*components\.)' \
+              ${inputs.dms}/quickshell/Modules/DankBar/WidgetHost.qml | sort -u > "$knownWidgets"
+
+            unknownWidgets="$({ grep -v ':' "$widgetsPath" || true; } | sort -u | comm -23 - "$knownWidgets")"
+            if [ -n "$unknownWidgets" ]; then
+              echo "bar widgets not present in this DankMaterialShell:" >&2
+              echo "$unknownWidgets" >&2
               exit 1
             fi
 

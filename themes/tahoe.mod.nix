@@ -1,12 +1,28 @@
 {
   desktopModules.theme-tahoe =
-    { pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
+    let
+      inherit (lib.modules) mkDefault;
+
+      light = config.theme.appearance == "light";
+    in
     {
       # TAHOE (liquid glass)
-      # Translucent dark surfaces, generous radius, blur on. Composed by a host
-      # to override the default theme.
+      # Translucent surfaces, generous radius, blur on. Composed by a host to
+      # override the default theme.
       config.theme = {
         name = "tahoe";
+
+        # Stock Tahoe is a light desktop: near-white chrome, black text, the
+        # light-mode system accent. `mkDefault` rather than a plain value so a
+        # host can pick the dark end of the same design with one line —
+        # `theme.appearance = "dark";` — and every adapter follows.
+        appearance = mkDefault "light";
 
         cornerRadius = 20;
         borderWidth = 1;
@@ -23,10 +39,10 @@
         font.mono.name = "JetBrainsMono Nerd Font";
         font.mono.package = pkgs.nerd-fonts.jetbrains-mono;
 
-        icons.name = "WhiteSur-dark";
+        icons.name = if light then "WhiteSur-light" else "WhiteSur-dark";
         icons.package = pkgs.whitesur-icon-theme;
 
-        gtk.name = "WhiteSur-Dark";
+        gtk.name = if light then "WhiteSur-Light" else "WhiteSur-Dark";
         gtk.package = pkgs.whitesur-gtk-theme;
 
         cursor.name = "WhiteSur-cursors";
@@ -51,22 +67,27 @@
               resvg --width 3840 --height 2160 ${./tahoe/wallpaper.svg} $out
             '';
 
+        # SYSTEM COLOURS
+        # Apple's own values for each appearance, not one palette lightened:
+        # the system blue really is #007aff in light and #0a84ff in dark, and
+        # the greys are the two ends of the same set rather than inversions of
+        # each other.
         palette = {
-          base = "#1e1e1e";
-          surface = "#2c2c2e";
-          overlay = "#3a3a3c";
+          base = if light then "#e9e9ec" else "#1e1e1e";
+          surface = if light then "#f7f7fa" else "#2c2c2e";
+          overlay = if light then "#ffffff" else "#3a3a3c";
           muted = "#8e8e93";
 
-          text = "#ffffff";
-          subtext = "#ebebf5";
+          text = if light then "#1c1c1e" else "#ffffff";
+          subtext = if light then "#3c3c43" else "#ebebf5";
 
-          accent = "#0a84ff";
+          accent = if light then "#007aff" else "#0a84ff";
           accentText = "#ffffff";
 
-          red = "#ff453a";
-          green = "#32d74b";
-          yellow = "#ffd60a";
-          blue = "#0a84ff";
+          red = if light then "#ff3b30" else "#ff453a";
+          green = if light then "#34c759" else "#32d74b";
+          yellow = if light then "#ffcc00" else "#ffd60a";
+          blue = if light then "#007aff" else "#0a84ff";
 
           # Glass is lit from above: a white specular hairline along the top
           # edge and a black cast shadow underneath. Both are pure rather than

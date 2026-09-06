@@ -29,6 +29,13 @@
       inherit (osConfig) theme;
       inherit (theme) palette;
 
+      # Fusion draws every frame, groove and shadow with the Mid/Dark/Shadow
+      # roles, so they have to be *darker* than the button they sit on. On a
+      # dark palette the backdrop tone is the darker one; on a light palette
+      # it is lighter than the widgets it would outline, which leaves frames
+      # invisible — there the grey does the job.
+      sunken = if theme.appearance == "dark" then palette.base else palette.muted;
+
       # QPalette::ColorRole enum order (Qt6): WindowText, Button, Light,
       # Midlight, Dark, Mid, Text, BrightText, ButtonText, Base, Window,
       # Shadow, Highlight, HighlightedText, Link, LinkVisited, AlternateBase,
@@ -91,14 +98,14 @@
         button = palette.surface;
         light = palette.overlay;
         midlight = palette.surface;
-        dark = palette.base;
-        mid = palette.base;
+        dark = sunken;
+        mid = sunken;
         inherit (palette) text;
         brightText = palette.text;
         buttonText = palette.text;
         base = palette.surface;
         window = palette.base;
-        shadow = palette.base;
+        shadow = sunken;
         highlight = palette.accent;
         highlightedText = palette.accentText;
         link = palette.accent;
@@ -118,14 +125,14 @@
         button = palette.surface;
         light = palette.overlay;
         midlight = palette.surface;
-        dark = palette.base;
-        mid = palette.base;
+        dark = sunken;
+        mid = sunken;
         text = palette.subtext;
         brightText = palette.text;
         buttonText = palette.subtext;
         base = palette.surface;
         window = palette.base;
-        shadow = palette.base;
+        shadow = sunken;
         highlight = palette.overlay;
         highlightedText = palette.subtext;
         link = palette.accent;
@@ -144,14 +151,14 @@
         button = palette.surface;
         light = palette.overlay;
         midlight = palette.surface;
-        dark = palette.base;
-        mid = palette.base;
+        dark = sunken;
+        mid = sunken;
         text = palette.muted;
         brightText = palette.text;
         buttonText = palette.muted;
         base = palette.surface;
         window = palette.base;
-        shadow = palette.base;
+        shadow = sunken;
         highlight = palette.overlay;
         highlightedText = palette.muted;
         link = palette.muted;

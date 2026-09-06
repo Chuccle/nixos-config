@@ -5,40 +5,60 @@
   ImageMagick operations, because layered light is exactly what gradients
   describe well and shell pipelines describe badly.
 
-  Four layers, back to front: a deep vertical ground, two wide off-centre
-  colour blooms, a bright core, then grain and a vignette. The blooms are what
-  the glass surfaces pick up and blur — a flat wash would leave the whole
-  liquid-glass effect with nothing to show.
+  The subject is silk: a warm ground with a few broad ribbons of light drawn
+  across it, each one a wide path under a heavy blur so no edge of the
+  geometry survives. Ribbons rather than radial blooms because the glass
+  surfaces above sample whatever is behind them — a bar or a dock crossing a
+  bloom picks up one flat tone, while crossing a ribbon it picks up a gradient,
+  which is the whole reason the effect reads as glass.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
   <defs>
-    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0b1f3f"/>
-      <stop offset="55%" stop-color="#123a6b"/>
-      <stop offset="100%" stop-color="#071427"/>
+    <linearGradient id="ground" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0%" stop-color="#f7f2ea"/>
+      <stop offset="45%" stop-color="#ecdfcd"/>
+      <stop offset="100%" stop-color="#d8c3a8"/>
     </linearGradient>
 
-    <radialGradient id="bloomCool" cx="0.28" cy="0.30" r="0.62">
-      <stop offset="0%" stop-color="#7fd3ff" stop-opacity="0.85"/>
-      <stop offset="45%" stop-color="#2f8fd8" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#0b1f3f" stop-opacity="0"/>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e6c9a0" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#c9a271" stop-opacity="0.55"/>
+    </linearGradient>
+
+    <linearGradient id="pale" x1="0" y1="0" x2="1" y2="0.6">
+      <stop offset="0%" stop-color="#fffaf2" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#f2e3cd" stop-opacity="0.5"/>
+    </linearGradient>
+
+    <linearGradient id="deep" x1="0.2" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b58e5f" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#8f6a44" stop-opacity="0.3"/>
+    </linearGradient>
+
+    <!-- One heavy blur, shared. The ribbons are drawn as plain paths and
+         softened here rather than being built from dozens of stops. -->
+    <filter id="soften" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="90"/>
+    </filter>
+
+    <filter id="soften-hard" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+
+    <linearGradient id="deepRibbon" x1="0" y1="0" x2="1" y2="0.5">
+      <stop offset="0%" stop-color="#a87f52" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#7d5c3a" stop-opacity="0.45"/>
+    </linearGradient>
+
+    <radialGradient id="glow" cx="0.62" cy="0.28" r="0.55">
+      <stop offset="0%" stop-color="#fffdf8" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#fff6e8" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#fff6e8" stop-opacity="0"/>
     </radialGradient>
 
-    <radialGradient id="bloomWarm" cx="0.78" cy="0.74" r="0.58">
-      <stop offset="0%" stop-color="#a77bff" stop-opacity="0.55"/>
-      <stop offset="50%" stop-color="#5a3fa8" stop-opacity="0.22"/>
-      <stop offset="100%" stop-color="#0b1f3f" stop-opacity="0"/>
-    </radialGradient>
-
-    <radialGradient id="core" cx="0.42" cy="0.40" r="0.26">
-      <stop offset="0%" stop-color="#eaf6ff" stop-opacity="0.55"/>
-      <stop offset="60%" stop-color="#bfe4ff" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#bfe4ff" stop-opacity="0"/>
-    </radialGradient>
-
-    <radialGradient id="vignette" cx="0.5" cy="0.45" r="0.78">
-      <stop offset="60%" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.45"/>
+    <radialGradient id="vignette" cx="0.5" cy="0.42" r="0.8">
+      <stop offset="55%" stop-color="#6b4f33" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#6b4f33" stop-opacity="0.28"/>
     </radialGradient>
 
     <!-- Fine monochrome grain. Wide, smooth gradients band badly on 8-bit
@@ -50,9 +70,29 @@
   </defs>
 
   <rect width="3840" height="2160" fill="url(#ground)"/>
-  <rect width="3840" height="2160" fill="url(#bloomCool)"/>
-  <rect width="3840" height="2160" fill="url(#bloomWarm)"/>
-  <rect width="3840" height="2160" fill="url(#core)"/>
-  <rect width="3840" height="2160" filter="url(#grain)" opacity="0.035"/>
+
+  <!-- GROUND BANDS
+       Two broad sweeps that set where the picture is warm and where it is
+       pale. Everything below is drawn over these. -->
+  <g filter="url(#soften)">
+    <path d="M -400 1520 C 700 1120, 1500 1460, 2300 1060 C 3000 720, 3500 930, 4240 620 L 4240 2360 L -400 2360 Z" fill="url(#warm)"/>
+    <path d="M -400 2020 C 600 1760, 1600 1940, 2500 1600 C 3200 1340, 3700 1460, 4240 1200 L 4240 2360 L -400 2360 Z" fill="url(#deep)"/>
+  </g>
+
+  <!-- RIBBONS
+       The silk itself: long, thin, nearly parallel sweeps at a shallower
+       blur, so an edge is visible without ever becoming a hard line. Their
+       spacing is deliberately uneven — evenly spaced bands read as a
+       pattern, uneven ones read as folded cloth. -->
+  <g filter="url(#soften-hard)">
+    <path d="M -400 1120 C 600 840, 1400 1080, 2200 760 C 2900 480, 3500 640, 4240 360 L 4240 560 C 3500 840, 2900 680, 2200 960 C 1400 1280, 600 1040, -400 1320 Z" fill="url(#pale)"/>
+    <path d="M -400 1330 C 620 1060, 1420 1300, 2240 980 C 2940 700, 3540 860, 4240 580 L 4240 690 C 3540 970, 2940 810, 2240 1090 C 1420 1410, 620 1170, -400 1440 Z" fill="url(#pale)" opacity="0.6"/>
+    <path d="M -400 1700 C 700 1400, 1500 1660, 2400 1280 C 3100 990, 3600 1140, 4240 870 L 4240 1010 C 3600 1280, 3100 1130, 2400 1420 C 1500 1800, 700 1540, -400 1840 Z" fill="url(#pale)" opacity="0.75"/>
+    <path d="M -400 1900 C 700 1620, 1600 1860, 2500 1500 C 3200 1220, 3700 1360, 4240 1100 L 4240 1180 C 3700 1440, 3200 1300, 2500 1580 C 1600 1940, 700 1700, -400 1980 Z" fill="url(#deepRibbon)" opacity="0.7"/>
+  </g>
+
+  <!-- The specular sweep: where the light lands on the cloth. -->
+  <rect width="3840" height="2160" fill="url(#glow)"/>
+  <rect width="3840" height="2160" filter="url(#grain)" opacity="0.03"/>
   <rect width="3840" height="2160" fill="url(#vignette)"/>
 </svg>

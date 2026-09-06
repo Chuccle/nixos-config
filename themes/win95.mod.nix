@@ -10,6 +10,11 @@
       config.theme = {
         name = "win95";
 
+        # Silver chrome and black text: light, whatever the era. Without this
+        # every GTK app in the session would be asked to prefer its dark
+        # variant and render dark widgets inside Chicago95's light frames.
+        appearance = "light";
+
         cornerRadius = 0;
         borderWidth = 2;
 
