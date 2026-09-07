@@ -1,15 +1,10 @@
 {
   flake.nixosModules.theme =
-    {
-      config,
-      lib,
-      pkgs,
-      ...
-    }:
+    { lib, pkgs, ... }:
     let
       inherit (lib.attrsets) genAttrs;
       inherit (lib.lists) foldl';
-      inherit (lib.modules) mkDefault mkMerge;
+      inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
       inherit (lib.strings)
         removePrefix
@@ -130,216 +125,211 @@
     {
       options.theme = mkOption {
         description = "Active theme tokens.";
-        type = submodule {
-          options = {
-            # Spliced into generated file names (`qt6ct/colors/<name>.conf`),
-            # so it is constrained to what is safe there rather than left as
-            # free-form text.
-            name = mkOption {
-              type = strMatching "[a-z0-9-]+";
-              description = "Identifier of the active theme.";
+        type = submodule (
+          { config, ... }:
+          {
+            options = {
+              # Spliced into generated file names (`qt6ct/colors/<name>.conf`),
+              # so it is constrained to what is safe there rather than left as
+              # free-form text.
+              name = mkOption {
+                type = strMatching "[a-z0-9-]+";
+                description = "Identifier of the active theme.";
+              };
+
+              # WHICH END OF THE RAMP THE PALETTE SITS AT
+              # Not decoration: several consumers cannot infer it from the
+              # colours and get it visibly wrong if they guess. GTK's
+              # prefer-dark flag, foot's choice of ANSI black/white and of
+              # which `colors-*` section it reads, and DMS's session mode —
+              # which writes the desktop's own `color-scheme` preference, so
+              # libadwaita apps follow it — all read this.
+              appearance = mkOption {
+                type = enum [
+                  "dark"
+                  "light"
+                ];
+                default = "dark";
+                description = "Whether the palette is a dark or a light one.";
+              };
+
+              # Every geometry token is a distance in pixels: negative is never
+              # meaningful, and `unsigned` says so at the type rather than
+              # leaving a `-1` to surface as a rendering fault three adapters
+              # downstream.
+              cornerRadius = mkOption { type = unsigned; };
+              borderWidth = mkOption { type = unsigned; };
+
+              margin = mkOption { type = unsigned; };
+              padding = mkOption { type = unsigned; };
+
+              font.size.normal = mkOption { type = unsigned; };
+              font.size.big = mkOption { type = unsigned; };
+
+              font.sans.name = mkOption { type = nonEmptyStr; };
+              font.sans.package = mkOption { type = package; };
+
+              font.mono.name = mkOption { type = nonEmptyStr; };
+              font.mono.package = mkOption { type = package; };
+
+              icons.name = mkOption { type = nonEmptyStr; };
+              icons.package = mkOption { type = package; };
+
+              gtk.name = mkOption { type = nonEmptyStr; };
+              gtk.package = mkOption { type = package; };
+
+              cursor.name = mkOption { type = nonEmptyStr; };
+              cursor.package = mkOption { type = package; };
+              cursor.size = mkOption {
+                type = unsigned;
+                default = 24;
+              };
+
+              wallpaper = mkOption {
+                type = nullOr path;
+                default = null;
+              };
+
+              # SEMANTIC PALETTE
+              # Hex strings (#rrggbb). Surfaces layer base -> surface -> overlay;
+              # text/subtext/muted are foreground tiers; then the accents; and
+              # `edgeLight`/`edgeShade` are the two extreme tones an edge is
+              # drawn with — the lit side and the side in shadow. Win95's 3D
+              # chrome is literally white-on-black over silver and Tahoe's glass
+              # is a bright specular hairline over a cast shadow, which is the
+              # same pair of roles, so both read one token pair rather than a
+              # constant inlined in a QML file and another in a KDL node.
+              #
+              # A theme declares one palette per appearance it has. Declare both
+              # and the desktop can be switched between them while it runs — the
+              # shell, the terminal and every portal-following app follow the
+              # mode without a rebuild. Declare one and the theme simply has no
+              # other side: Win95 never had a dark mode.
+              palettes.dark = mkOption {
+                type = nullOr (paletteOf colorOption);
+                default = null;
+              };
+              palettes.light = mkOption {
+                type = nullOr (paletteOf colorOption);
+                default = null;
+              };
+
+              # The palette for the current appearance, already converted. This
+              # is what every adapter reads; it is derived, never set.
+              #
+              # A default rather than a definition elsewhere in this module: a
+              # definition of `theme` at normal priority would discard the
+              # `mkDefault` theme below it wholesale, and every host running the
+              # stock theme would come up with a palette and nothing else.
+              palette = mkOption {
+                type = paletteOf colorView;
+                readOnly = true;
+                default =
+                  let
+                    active = config.palettes.${config.appearance};
+                  in
+                  if active == null then
+                    throw "theme \"${config.name}\" has no ${config.appearance} palette: set theme.palettes.${config.appearance}, or point theme.appearance at one it does have"
+                  else
+                    active;
+              };
+
+              # GLASS / BLUR
+              # Drives the Aurora liquid-glass look. Flat themes set enable = false.
+              blur.enable = mkOption {
+                type = bool;
+                default = false;
+              };
+              blur.radius = mkOption {
+                type = unsigned;
+                default = 0;
+              };
+              # A fraction, so the type says so: 0.6 is glass, 60 is a value
+              # that silently renders every surface fully opaque wherever it is
+              # read as a multiplier.
+              blur.opacity = mkOption {
+                type = addCheck float (opacity: opacity >= 0.0 && opacity <= 1.0);
+                default = 1.0;
+              };
             };
-
-            # WHICH END OF THE RAMP THE PALETTE SITS AT
-            # Not decoration: several consumers cannot infer it from the
-            # colours and get it visibly wrong if they guess. GTK's
-            # prefer-dark flag, foot's choice of ANSI black/white and of
-            # which `colors-*` section it reads, and DMS's session mode —
-            # which writes the desktop's own `color-scheme` preference, so
-            # libadwaita apps follow it — all read this.
-            appearance = mkOption {
-              type = enum [
-                "dark"
-                "light"
-              ];
-              default = "dark";
-              description = "Whether the palette is a dark or a light one.";
-            };
-
-            # Every geometry token is a distance in pixels: negative is never
-            # meaningful, and `unsigned` says so at the type rather than
-            # leaving a `-1` to surface as a rendering fault three adapters
-            # downstream.
-            cornerRadius = mkOption { type = unsigned; };
-            borderWidth = mkOption { type = unsigned; };
-
-            margin = mkOption { type = unsigned; };
-            padding = mkOption { type = unsigned; };
-
-            font.size.normal = mkOption { type = unsigned; };
-            font.size.big = mkOption { type = unsigned; };
-
-            font.sans.name = mkOption { type = nonEmptyStr; };
-            font.sans.package = mkOption { type = package; };
-
-            font.mono.name = mkOption { type = nonEmptyStr; };
-            font.mono.package = mkOption { type = package; };
-
-            icons.name = mkOption { type = nonEmptyStr; };
-            icons.package = mkOption { type = package; };
-
-            gtk.name = mkOption { type = nonEmptyStr; };
-            gtk.package = mkOption { type = package; };
-
-            cursor.name = mkOption { type = nonEmptyStr; };
-            cursor.package = mkOption { type = package; };
-            cursor.size = mkOption {
-              type = unsigned;
-              default = 24;
-            };
-
-            wallpaper = mkOption {
-              type = nullOr path;
-              default = null;
-            };
-
-            # SEMANTIC PALETTE
-            # Hex strings (#rrggbb). Surfaces layer base -> surface -> overlay;
-            # text/subtext/muted are foreground tiers; then the accents; and
-            # `edgeLight`/`edgeShade` are the two extreme tones an edge is
-            # drawn with — the lit side and the side in shadow. Win95's 3D
-            # chrome is literally white-on-black over silver and Tahoe's glass
-            # is a bright specular hairline over a cast shadow, which is the
-            # same pair of roles, so both read one token pair rather than a
-            # constant inlined in a QML file and another in a KDL node.
-            #
-            # A theme declares one palette per appearance it has. Declare both
-            # and the desktop can be switched between them while it runs — the
-            # shell, the terminal and every portal-following app follow the
-            # mode without a rebuild. Declare one and the theme simply has no
-            # other side: Win95 never had a dark mode.
-            palettes.dark = mkOption {
-              type = nullOr (paletteOf colorOption);
-              default = null;
-            };
-            palettes.light = mkOption {
-              type = nullOr (paletteOf colorOption);
-              default = null;
-            };
-
-            # The palette for the current appearance, already converted. This
-            # is what every adapter reads; it is derived below, never set.
-            palette = mkOption {
-              type = paletteOf colorView;
-              readOnly = true;
-            };
-
-            # GLASS / BLUR
-            # Drives the Aurora liquid-glass look. Flat themes set enable = false.
-            blur.enable = mkOption {
-              type = bool;
-              default = false;
-            };
-            blur.radius = mkOption {
-              type = unsigned;
-              default = 0;
-            };
-            # A fraction, so the type says so: 0.6 is glass, 60 is a value
-            # that silently renders every surface fully opaque wherever it is
-            # read as a multiplier.
-            blur.opacity = mkOption {
-              type = addCheck float (opacity: opacity >= 0.0 && opacity <= 1.0);
-              default = 1.0;
-            };
-          };
-        };
+          }
+        );
       };
 
-      config.theme = mkMerge [
-        # GRUVBOX (default, flat)
-        # Base look; a composed theme module overrides this wholesale — which
-        # is why it is one `mkDefault` definition and the derived palette
-        # below is a separate one, at normal priority, that survives the
-        # override.
-        (mkDefault {
-          name = "gruvbox";
+      # GRUVBOX (default, flat)
+      # Base look; a composed theme module overrides this wholesale.
+      config.theme = mkDefault {
+        name = "gruvbox";
 
-          cornerRadius = 4;
-          borderWidth = 2;
+        cornerRadius = 4;
+        borderWidth = 2;
 
-          margin = 0;
-          padding = 8;
+        margin = 0;
+        padding = 8;
 
-          font.size.normal = 16;
-          font.size.big = 20;
+        font.size.normal = 16;
+        font.size.big = 20;
 
-          font.sans.name = "Lexend";
-          font.sans.package = pkgs.lexend;
+        font.sans.name = "Lexend";
+        font.sans.package = pkgs.lexend;
 
-          font.mono.name = "JetBrainsMono Nerd Font";
-          font.mono.package = pkgs.nerd-fonts.jetbrains-mono;
+        font.mono.name = "JetBrainsMono Nerd Font";
+        font.mono.package = pkgs.nerd-fonts.jetbrains-mono;
 
-          icons.name = "Gruvbox-Plus-Dark";
-          icons.package = pkgs.gruvbox-plus-icons;
+        icons.name = "Gruvbox-Plus-Dark";
+        icons.package = pkgs.gruvbox-plus-icons;
 
-          gtk.name = "Gruvbox-Dark";
-          gtk.package = pkgs.gruvbox-gtk-theme;
+        gtk.name = "Gruvbox-Dark";
+        gtk.package = pkgs.gruvbox-gtk-theme;
 
-          cursor.name = "Bibata-Modern-Classic";
-          cursor.package = pkgs.bibata-cursors;
+        cursor.name = "Bibata-Modern-Classic";
+        cursor.package = pkgs.bibata-cursors;
 
-          # Gruvbox ships both sides, so the default theme can be toggled the
-          # same way a composed one can.
-          palettes.dark = {
-            base = "#1d2021";
-            surface = "#3c3836";
-            overlay = "#504945";
-            muted = "#928374";
+        # Gruvbox ships both sides, so the default theme can be toggled the
+        # same way a composed one can.
+        palettes.dark = {
+          base = "#1d2021";
+          surface = "#3c3836";
+          overlay = "#504945";
+          muted = "#928374";
 
-            text = "#ebdbb2";
-            subtext = "#bdae93";
+          text = "#ebdbb2";
+          subtext = "#bdae93";
 
-            accent = "#8ec07c";
-            accentText = "#1d2021";
+          accent = "#8ec07c";
+          accentText = "#1d2021";
 
-            red = "#fb4934";
-            green = "#b8bb26";
-            yellow = "#fabd2f";
-            blue = "#83a598";
+          red = "#fb4934";
+          green = "#b8bb26";
+          yellow = "#fabd2f";
+          blue = "#83a598";
 
-            edgeLight = "#a89984";
-            edgeShade = "#000000";
-          };
+          edgeLight = "#a89984";
+          edgeShade = "#000000";
+        };
 
-          palettes.light = {
-            base = "#f9f5d7";
-            surface = "#fbf1c7";
-            overlay = "#ebdbb2";
-            muted = "#928374";
+        palettes.light = {
+          base = "#f9f5d7";
+          surface = "#fbf1c7";
+          overlay = "#ebdbb2";
+          muted = "#928374";
 
-            text = "#3c3836";
-            subtext = "#504945";
+          text = "#3c3836";
+          subtext = "#504945";
 
-            accent = "#427b58";
-            accentText = "#fbf1c7";
+          accent = "#427b58";
+          accentText = "#fbf1c7";
 
-            red = "#9d0006";
-            green = "#79740e";
-            yellow = "#b57614";
-            blue = "#076678";
+          red = "#9d0006";
+          green = "#79740e";
+          yellow = "#b57614";
+          blue = "#076678";
 
-            edgeLight = "#ffffff";
-            edgeShade = "#7c6f64";
-          };
+          edgeLight = "#ffffff";
+          edgeShade = "#7c6f64";
+        };
 
-          blur.enable = false;
-        })
-
-        # THE ACTIVE PALETTE
-        # Derived rather than declared: a theme writes one palette per
-        # appearance and this picks the one in force, so no adapter has to
-        # know that more than one exists and none of them can disagree about
-        # which is showing.
-        {
-          palette =
-            let
-              active = config.theme.palettes.${config.theme.appearance};
-            in
-            if active == null then
-              throw "theme \"${config.theme.name}\" has no ${config.theme.appearance} palette: set theme.palettes.${config.theme.appearance}, or point theme.appearance at one it does have"
-            else
-              active;
-        }
-      ];
+        blur.enable = false;
+      };
     };
 }

@@ -1,17 +1,25 @@
 {
   desktopModules.niri =
-    { lib, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
       inherit (lib.attrsets) mapAttrsRecursive;
       inherit (lib.meta) getExe';
       inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
       inherit (lib.types)
+        bool
         float
         int
         str
         submodule
         ;
+
+      inherit (config) theme;
 
       # PER-LEAF DEFAULTS
       # `mkDefault` on the whole attrset is a single definition at one
@@ -64,6 +72,32 @@
         };
       };
 
+      # WINDOW MODEL
+      # niri tiles; the design this stack is dressed as does not. Both knobs
+      # are what separate "a tiling compositor wearing a Mac's colours" from
+      # something that behaves like the thing it looks like, and both are
+      # declared rather than derived so a host can keep the tiling it came for.
+      options.niriWindows = mkOption {
+        description = "niri window-model tokens.";
+        type = submodule {
+          options = {
+            # Windows open in niri's floating layer instead of the scrolling
+            # tiled one: free overlap, drag anywhere, which is the model every
+            # window in the reference is using. The tiled layer is still there
+            # — Mod+V moves a window into it.
+            floating = mkOption { type = bool; };
+
+            # Let applications draw their own decorations. niri draws no
+            # titlebars at all, so asking clients not to means every window
+            # ends up without one — while on a Mac every window has a title
+            # bar with its controls at the left. GTK apps under WhiteSur draw
+            # exactly that; Qt apps get the adwaita decoration plugin (see
+            # adapters/qt.mod.nix), which is a title bar, if not that one.
+            clientDecorations = mkOption { type = bool; };
+          };
+        };
+      };
+
       # How much of every animation duration to keep. Below 1.0 is faster than
       # niri's default; this is the single knob that decides whether the
       # session feels immediate or floaty.
@@ -105,6 +139,11 @@
           saturation = 1.4;
         };
 
+        niriWindows = defaults {
+          floating = theme.blur.enable;
+          clientDecorations = theme.blur.enable;
+        };
+
         niriAnimationSlowdown = mkDefault 0.6;
       };
     };
@@ -118,6 +157,7 @@
         niriAnimationSlowdown
         niriBlur
         niriShadow
+        niriWindows
         theme
         ;
       inherit (theme) palette;
@@ -253,8 +293,6 @@
           ]
         ))
 
-        (call "prefer-no-csd")
-
         {
           name = "animations";
           comment = ''
@@ -263,6 +301,11 @@
             faster than niri's default.'';
           children = singleton (leaf "slowdown" [ niriAnimationSlowdown ]);
         }
+      ]
+      ++ optionals (!niriWindows.clientDecorations) [
+        # Nothing draws a title bar otherwise: niri has no such concept, so
+        # asking clients to skip theirs leaves every window without one.
+        (call "prefer-no-csd")
       ]
       ++ optionals glass [
         {
@@ -284,6 +327,19 @@
             So zooming out lands on the theme's own base colour rather than
             niri's default grey.'';
           children = singleton (leaf "backdrop-color" [ palette.base.hex ]);
+        }
+      ]
+      ++ optionals niriWindows.floating [
+        {
+          name = "window-rule";
+          comment = ''
+            Windows open floating. This is the single largest difference
+            between a scrollable tiler and the desktop it is dressed as: on a
+            Mac a new window lands where it lands, overlaps what was there,
+            and is dragged around by hand. The tiled layer is still one
+            keystroke away (Mod+V), so nothing is lost — it just stops being
+            what every window gets by default.'';
+          children = singleton (leaf "open-floating" [ true ]);
         }
       ]
       ++ [
@@ -342,7 +398,9 @@
           ++ bind "Up" (call "focus-window-up")
           ++ bind "Down" (call "focus-window-down")
           ++ workspaceBinds
+          ++ bind "V" (call "toggle-window-floating")
           ++ [
+            (block "Mod+Shift+V" (singleton (call "switch-focus-between-floating-and-tiling")))
             (block "Mod+Shift+T" (singleton dmsThemeToggle))
             (block "Mod+Shift+E" (singleton (call "quit")))
             (block "Print" (singleton (call "screenshot")))

@@ -93,6 +93,28 @@
             # whose light side is the one in force has to say so.
             initial-color-theme = theme.appearance;
           };
+
+        }
+        // optionalAttrs glass {
+          # TITLE BAR
+          # Only on a glass stack, whose compositor draws no decorations of its
+          # own: there foot's default preference for server-side ones leaves the
+          # terminal a bare rectangle, while every window in the design it is
+          # dressed as has a title bar. A flat stack keeps this out of the file
+          # entirely — labwc decorates its own windows, in period Win95 chrome.
+          #
+          # Only the three button colours are pinned, to the semantics macOS
+          # uses: yellow minimises, green zooms, red closes. The bar and glyph
+          # colours are left to foot, which takes them from whichever colour
+          # scheme is live — so they follow the light/dark toggle, which a
+          # value written here could not.
+          csd = {
+            preferred = "client";
+            size = theme.font.size.normal + theme.padding;
+            "button-minimize-color" = "ff${palettes.${theme.appearance}.yellow.bare}";
+            "button-maximize-color" = "ff${palettes.${theme.appearance}.green.bare}";
+            "button-close-color" = "ff${palettes.${theme.appearance}.red.bare}";
+          };
         }
         // optionalAttrs (palettes.dark != null) {
           "colors-dark" = colorsFor {

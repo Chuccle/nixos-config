@@ -115,6 +115,11 @@
             # dock read as macOS rather than as a launcher strip.
             showTrash = mkOption { type = bool; };
 
+            # Icons swell under the pointer. The other half of what makes a
+            # dock read as macOS — DMS ships the behaviour and leaves it off.
+            enlargeOnHover = mkOption { type = bool; };
+            enlargePercentage = mkOption { type = unsigned; };
+
             position = mkOption { type = unsigned; };
             iconSize = mkOption { type = unsigned; };
             spacing = mkOption { type = unsigned; };
@@ -328,6 +333,9 @@
           openOnOverview = true;
           groupByApp = true;
           showTrash = true;
+
+          enlargeOnHover = true;
+          enlargePercentage = 130;
 
           # 0 = bottom, matching SettingsData.Position.Bottom.
           position = 0;
@@ -666,6 +674,8 @@
 
         showDock = dmsDock.show;
         dockShowTrash = dmsDock.showTrash;
+        appsDockEnlargeOnHover = dmsDock.enlargeOnHover;
+        appsDockEnlargePercentage = dmsDock.enlargePercentage;
         dockAutoHide = dmsDock.autoHide;
         dockSmartAutoHide = dmsDock.smartAutoHide;
         dockOpenOnOverview = dmsDock.openOnOverview;

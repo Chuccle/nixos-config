@@ -1,7 +1,8 @@
 {
   desktopModules.qt =
-    { lib, ... }:
+    { lib, pkgs, ... }:
     let
+      inherit (lib.lists) singleton;
       inherit (lib.modules) mkForce;
     in
     {
@@ -11,6 +12,22 @@
       # otherwise overrides the hjem-level value for the whole session.
       environment.sessionVariables.QT_QPA_PLATFORMTHEME = mkForce "qt6ct";
       environment.sessionVariables.QT_QPA_PLATFORMTHEME_QT6 = mkForce "qt6ct";
+
+      # QT WINDOW DECORATIONS
+      # When the compositor asks clients to decorate themselves, QtWayland
+      # falls back to `bradient` — a gradient title bar with primitive
+      # buttons. This plugin draws a plain modern one instead, which is what a
+      # Qt app has to look like next to GTK apps drawing WhiteSur's. It is
+      # inert on a stack whose compositor decorates windows itself (labwc
+      # does), so it costs those hosts nothing but the closure.
+      #
+      # QT_PLUGIN_PATH rather than relying on the profile: this repo sets the
+      # platform theme by hand instead of enabling NixOS's `qt` module, and
+      # that module is what would otherwise put the plugin directory on the
+      # search path.
+      environment.systemPackages = singleton pkgs.qadwaitadecorations;
+      environment.sessionVariables.QT_WAYLAND_DECORATION = "adwaita";
+      environment.sessionVariables.QT_PLUGIN_PATH = singleton "${pkgs.qadwaitadecorations}/${pkgs.qt6.qtbase.qtPluginPrefix}";
     };
 
   desktopHomeModules.qt =
