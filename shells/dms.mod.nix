@@ -204,6 +204,13 @@
             # macOS names the focused app in bold and shows no icon for it.
             focusedWindow.showIcon = mkOption { type = bool; };
 
+            # Whether a fresh session is put back into the theme's declared
+            # appearance. On, the desktop always starts where the tokens say
+            # (and the GTK and Qt files, which are written at build time, are
+            # built for) and a runtime toggle lasts for that session. Off, DMS
+            # restores whichever mode it was left in.
+            applyAppearanceAtStartup = mkOption { type = bool; };
+
             # "spotlight" is DMS's minimal centred search bar; "full" is the
             # grid launcher with mode tabs.
             launcherStyle = mkOption {
@@ -383,6 +390,7 @@
           trayIconTint = "monochrome";
           focusedWindow.showIcon = false;
           launcherStyle = "spotlight";
+          applyAppearanceAtStartup = true;
 
           # macOS runs a 12-hour menu-bar clock without seconds, with the
           # weekday and date beside it: "Wed Apr 1  9:41 AM".
@@ -444,6 +452,45 @@
         # loop's deps are provided explicitly: `dms` itself, coreutils, and
         # quickshell — `dms ipc` shells out to `qs`, so without it the call
         # dies with `exec: "qs": … $PATH`.
+        # FOOT FOLLOWS THE MODE
+        # DMS owns the light/dark mode and persists it in its own session
+        # state. foot is the one application in this stack that can change
+        # colour scheme while it runs — SIGUSR1 for dark, SIGUSR2 for light,
+        # which is why both sections are written in modules/foot.mod.nix — but
+        # it has no way to hear that the mode changed. A path unit on that
+        # state file is the seam, and it catches every route into the toggle:
+        # the Control Centre tile, the keybind, and `dms ipc call theme`.
+        #
+        # The directory is watched rather than the file, because DMS replaces
+        # it by atomic rename and a rename is a directory event.
+        systemd.user.paths.foot-color-theme = {
+          description = "Watch the shell's light/dark mode for foot";
+          wantedBy = [ "graphical-session.target" ];
+          partOf = [ "graphical-session.target" ];
+          pathConfig.PathChanged = "%h/.local/state/DankMaterialShell";
+        };
+
+        systemd.user.services.foot-color-theme = {
+          description = "Switch foot's colour theme to match the shell's";
+          path = [
+            pkgs.coreutils
+            pkgs.jq
+            pkgs.procps
+          ];
+          serviceConfig.Type = "oneshot";
+          script = /* bash */ ''
+            set -euo pipefail
+            state="$HOME/.local/state/DankMaterialShell/session.json"
+            [ -e "$state" ] || exit 0
+
+            if [ "$(jq -r '.isLightMode // false' "$state")" = "true" ]; then
+              pkill -USR2 -x foot || true
+            else
+              pkill -USR1 -x foot || true
+            fi
+          '';
+        };
+
         systemd.user.services.dms-appearance = {
           description = "Apply the theme's appearance and wallpaper to DMS";
           wantedBy = [ "graphical-session.target" ];
@@ -458,7 +505,12 @@
           script = /* bash */ ''
             set -euo pipefail
             for _ in $(seq 30); do
-              if dms ipc call theme ${theme.appearance}; then
+              # `getMode` doubles as the readiness probe: it answers only once
+              # the shell's IPC socket is up, and changes nothing when the
+              # session is left in whichever mode it was last toggled to.
+              if dms ipc call theme ${
+                if config.dmsShell.applyAppearanceAtStartup then theme.appearance else "getMode"
+              }; then
                 ${optionalString (theme.wallpaper != null) ''dms ipc call wallpaper set "${theme.wallpaper}"''}
                 exit 0
               fi
@@ -491,6 +543,34 @@
       inherit (theme) palette;
 
       themeFile = "${config.directory}/.config/DankMaterialShell/dank-theme.json";
+
+      # Material 3 colour roles from one palette. Taken as an argument rather
+      # than read from `theme.palette`, because a theme with both appearances
+      # publishes both of them at once (see below).
+      roles = palette: {
+        primary = palette.accent.hex;
+        primaryText = palette.accentText.hex;
+        primaryContainer = palette.overlay.hex;
+        secondary = palette.blue.hex;
+
+        surface = palette.surface.hex;
+        surfaceText = palette.text.hex;
+        surfaceVariant = palette.overlay.hex;
+        surfaceVariantText = palette.subtext.hex;
+        surfaceTint = palette.accent.hex;
+
+        background = palette.base.hex;
+        backgroundText = palette.text.hex;
+        outline = palette.muted.hex;
+
+        surfaceContainer = palette.surface.hex;
+        surfaceContainerHigh = palette.overlay.hex;
+        surfaceContainerHighest = palette.overlay.hex;
+
+        error = palette.red.hex;
+        warning = palette.yellow.hex;
+        info = palette.blue.hex;
+      };
 
       # DMS reads barConfigs as a whole object per bar, so the fixed identity
       # fields (which bar this is, where it lives) are supplied here — those
@@ -658,36 +738,28 @@
       # DMS THEME
       # DMS's documented custom-theme mechanism (docs/CUSTOM_THEMES.md): a JSON
       # file of Material 3 color roles, activated from settings.json via
-      # currentThemeName = "custom". Tokens map onto the roles below; a flat
-      # (variant-less) definition applies to both light and dark modes.
+      # currentThemeName = "custom". Tokens map onto the roles below.
+      #
+      # A theme that declares both palettes is written in the variant form, and
+      # that is what makes the mode toggle mean something: DMS keeps both sets
+      # and recolours the whole shell — bar, dock, control centre, popouts,
+      # notifications, lock screen — the moment the mode changes, with no
+      # rebuild. A theme with one palette is written flat, as before, and
+      # applies to both modes.
       xdg.config.files."DankMaterialShell/dank-theme.json" = {
         generator = pkgs.writers.writeJSON "dms-theme.json";
-        value = {
-          inherit (theme) name;
-
-          primary = palette.accent.hex;
-          primaryText = palette.accentText.hex;
-          primaryContainer = palette.overlay.hex;
-          secondary = palette.blue.hex;
-
-          surface = palette.surface.hex;
-          surfaceText = palette.text.hex;
-          surfaceVariant = palette.overlay.hex;
-          surfaceVariantText = palette.subtext.hex;
-          surfaceTint = palette.accent.hex;
-
-          background = palette.base.hex;
-          backgroundText = palette.text.hex;
-          outline = palette.muted.hex;
-
-          surfaceContainer = palette.surface.hex;
-          surfaceContainerHigh = palette.overlay.hex;
-          surfaceContainerHighest = palette.overlay.hex;
-
-          error = palette.red.hex;
-          warning = palette.yellow.hex;
-          info = palette.blue.hex;
-        };
+        value =
+          if theme.palettes.dark != null && theme.palettes.light != null then
+            {
+              dark = roles theme.palettes.dark // {
+                name = "${theme.name}-dark";
+              };
+              light = roles theme.palettes.light // {
+                name = "${theme.name}-light";
+              };
+            }
+          else
+            roles palette // { inherit (theme) name; };
       };
 
       # hjem replaces this file on every rebuild, so anything tweaked in the

@@ -155,6 +155,17 @@
         "toggle"
       ];
 
+      # Light/dark from the keyboard. The Control Centre has a tile for it and
+      # both routes end in the same session state, which is what the shell,
+      # the terminal and every portal-following app watch.
+      dmsThemeToggle = spawn [
+        "dms"
+        "ipc"
+        "call"
+        "theme"
+        "toggle"
+      ];
+
       workspaceBinds =
         concatMap
           (index: singleton (block "Mod+${toString index}" (singleton (leaf "focus-workspace" [ index ]))))
@@ -332,6 +343,7 @@
           ++ bind "Down" (call "focus-window-down")
           ++ workspaceBinds
           ++ [
+            (block "Mod+Shift+T" (singleton dmsThemeToggle))
             (block "Mod+Shift+E" (singleton (call "quit")))
             (block "Print" (singleton (call "screenshot")))
           ]

@@ -1,6 +1,9 @@
 {
   desktopModules.theme-win95 =
-    { pkgs, ... }:
+    { lib, pkgs, ... }:
+    let
+      inherit (lib.modules) mkDefault;
+    in
     {
       # WIN95 (retro, flat, hard bevels)
       # Teal desktop, silver 3D chrome, navy selection. Chicago95 (nixpkgs)
@@ -13,7 +16,11 @@
         # Silver chrome and black text: light, whatever the era. Without this
         # every GTK app in the session would be asked to prefer its dark
         # variant and render dark widgets inside Chicago95's light frames.
-        appearance = "light";
+        #
+        # `mkDefault` even though there is nothing to switch to, so a host that
+        # asks for dark anyway gets told which theme has no dark palette rather
+        # than a conflicting-definition error naming neither.
+        appearance = mkDefault "light";
 
         cornerRadius = 0;
         borderWidth = 2;
@@ -39,7 +46,9 @@
         cursor.name = "Vanilla-DMZ";
         cursor.package = pkgs.vanilla-dmz;
 
-        palette = {
+        # One palette, because Win95 had one: there is no dark mode to toggle
+        # into, and inventing one would be a different theme.
+        palettes.light = {
           base = "#008080";
           surface = "#c0c0c0";
           overlay = "#dfdfdf";

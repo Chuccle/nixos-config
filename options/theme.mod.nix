@@ -1,9 +1,15 @@
 {
   flake.nixosModules.theme =
-    { lib, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
+      inherit (lib.attrsets) genAttrs;
       inherit (lib.lists) foldl';
-      inherit (lib.modules) mkDefault;
+      inherit (lib.modules) mkDefault mkMerge;
       inherit (lib.options) mkOption;
       inherit (lib.strings)
         removePrefix
@@ -20,6 +26,7 @@
         nullOr
         package
         path
+        str
         strMatching
         submodule
         ;
@@ -60,6 +67,27 @@
       # so a mistyped token is an eval error rather than a colour that silently
       # renders black; and every adapter reads a named field, which says at the
       # call site which spelling it asked for.
+      # The roles a palette fills, named once. Two shapes are derived from
+      # this list — the source palettes a theme writes and the converted view
+      # every adapter reads — so a palette cannot gain a colour in one shape
+      # and be missing it in the other.
+      colorNames = [
+        "accent"
+        "accentText"
+        "base"
+        "blue"
+        "edgeLight"
+        "edgeShade"
+        "green"
+        "muted"
+        "overlay"
+        "red"
+        "subtext"
+        "surface"
+        "text"
+        "yellow"
+      ];
+
       colorOption = mkOption {
         type = strMatching "#[0-9a-fA-F]{6}";
         apply =
@@ -83,6 +111,21 @@
             rgb = "${toString (byte 0)},${toString (byte 2)},${toString (byte 4)}";
           };
       };
+
+      # What `apply` above produces. The active palette is published in this
+      # shape rather than converted again at every call site.
+      colorView = mkOption {
+        type = submodule {
+          options = {
+            argb = mkOption { type = str; };
+            bare = mkOption { type = str; };
+            hex = mkOption { type = str; };
+            rgb = mkOption { type = str; };
+          };
+        };
+      };
+
+      paletteOf = color: submodule { options = genAttrs colorNames (_name: color); };
     in
     {
       options.theme = mkOption {
@@ -152,37 +195,33 @@
 
             # SEMANTIC PALETTE
             # Hex strings (#rrggbb). Surfaces layer base -> surface -> overlay;
-            # text/subtext/muted are foreground tiers; the rest are accents.
+            # text/subtext/muted are foreground tiers; then the accents; and
+            # `edgeLight`/`edgeShade` are the two extreme tones an edge is
+            # drawn with — the lit side and the side in shadow. Win95's 3D
+            # chrome is literally white-on-black over silver and Tahoe's glass
+            # is a bright specular hairline over a cast shadow, which is the
+            # same pair of roles, so both read one token pair rather than a
+            # constant inlined in a QML file and another in a KDL node.
+            #
+            # A theme declares one palette per appearance it has. Declare both
+            # and the desktop can be switched between them while it runs — the
+            # shell, the terminal and every portal-following app follow the
+            # mode without a rebuild. Declare one and the theme simply has no
+            # other side: Win95 never had a dark mode.
+            palettes.dark = mkOption {
+              type = nullOr (paletteOf colorOption);
+              default = null;
+            };
+            palettes.light = mkOption {
+              type = nullOr (paletteOf colorOption);
+              default = null;
+            };
+
+            # The palette for the current appearance, already converted. This
+            # is what every adapter reads; it is derived below, never set.
             palette = mkOption {
-              type = submodule {
-                options = {
-                  base = colorOption;
-                  surface = colorOption;
-                  overlay = colorOption;
-                  muted = colorOption;
-
-                  text = colorOption;
-                  subtext = colorOption;
-
-                  accent = colorOption;
-                  accentText = colorOption;
-
-                  red = colorOption;
-                  green = colorOption;
-                  yellow = colorOption;
-                  blue = colorOption;
-
-                  # EDGES
-                  # The two extreme tones an edge is drawn with: the lit side
-                  # and the side in shadow. Win95's 3D chrome is literally
-                  # white-on-black over silver, and Tahoe's glass is a bright
-                  # specular hairline over a cast shadow — the same pair of
-                  # roles, so both are one token pair rather than a constant
-                  # inlined in a QML file and another in a KDL node.
-                  edgeLight = colorOption;
-                  edgeShade = colorOption;
-                };
-              };
+              type = paletteOf colorView;
+              readOnly = true;
             };
 
             # GLASS / BLUR
@@ -206,57 +245,101 @@
         };
       };
 
-      # GRUVBOX (default, flat)
-      # Base look; a composed theme module overrides this wholesale.
-      config.theme = mkDefault {
-        name = "gruvbox";
+      config.theme = mkMerge [
+        # GRUVBOX (default, flat)
+        # Base look; a composed theme module overrides this wholesale — which
+        # is why it is one `mkDefault` definition and the derived palette
+        # below is a separate one, at normal priority, that survives the
+        # override.
+        (mkDefault {
+          name = "gruvbox";
 
-        cornerRadius = 4;
-        borderWidth = 2;
+          cornerRadius = 4;
+          borderWidth = 2;
 
-        margin = 0;
-        padding = 8;
+          margin = 0;
+          padding = 8;
 
-        font.size.normal = 16;
-        font.size.big = 20;
+          font.size.normal = 16;
+          font.size.big = 20;
 
-        font.sans.name = "Lexend";
-        font.sans.package = pkgs.lexend;
+          font.sans.name = "Lexend";
+          font.sans.package = pkgs.lexend;
 
-        font.mono.name = "JetBrainsMono Nerd Font";
-        font.mono.package = pkgs.nerd-fonts.jetbrains-mono;
+          font.mono.name = "JetBrainsMono Nerd Font";
+          font.mono.package = pkgs.nerd-fonts.jetbrains-mono;
 
-        icons.name = "Gruvbox-Plus-Dark";
-        icons.package = pkgs.gruvbox-plus-icons;
+          icons.name = "Gruvbox-Plus-Dark";
+          icons.package = pkgs.gruvbox-plus-icons;
 
-        gtk.name = "Gruvbox-Dark";
-        gtk.package = pkgs.gruvbox-gtk-theme;
+          gtk.name = "Gruvbox-Dark";
+          gtk.package = pkgs.gruvbox-gtk-theme;
 
-        cursor.name = "Bibata-Modern-Classic";
-        cursor.package = pkgs.bibata-cursors;
+          cursor.name = "Bibata-Modern-Classic";
+          cursor.package = pkgs.bibata-cursors;
 
-        palette = {
-          base = "#1d2021";
-          surface = "#3c3836";
-          overlay = "#504945";
-          muted = "#928374";
+          # Gruvbox ships both sides, so the default theme can be toggled the
+          # same way a composed one can.
+          palettes.dark = {
+            base = "#1d2021";
+            surface = "#3c3836";
+            overlay = "#504945";
+            muted = "#928374";
 
-          text = "#ebdbb2";
-          subtext = "#bdae93";
+            text = "#ebdbb2";
+            subtext = "#bdae93";
 
-          accent = "#8ec07c";
-          accentText = "#1d2021";
+            accent = "#8ec07c";
+            accentText = "#1d2021";
 
-          red = "#fb4934";
-          green = "#b8bb26";
-          yellow = "#fabd2f";
-          blue = "#83a598";
+            red = "#fb4934";
+            green = "#b8bb26";
+            yellow = "#fabd2f";
+            blue = "#83a598";
 
-          edgeLight = "#a89984";
-          edgeShade = "#000000";
-        };
+            edgeLight = "#a89984";
+            edgeShade = "#000000";
+          };
 
-        blur.enable = false;
-      };
+          palettes.light = {
+            base = "#f9f5d7";
+            surface = "#fbf1c7";
+            overlay = "#ebdbb2";
+            muted = "#928374";
+
+            text = "#3c3836";
+            subtext = "#504945";
+
+            accent = "#427b58";
+            accentText = "#fbf1c7";
+
+            red = "#9d0006";
+            green = "#79740e";
+            yellow = "#b57614";
+            blue = "#076678";
+
+            edgeLight = "#ffffff";
+            edgeShade = "#7c6f64";
+          };
+
+          blur.enable = false;
+        })
+
+        # THE ACTIVE PALETTE
+        # Derived rather than declared: a theme writes one palette per
+        # appearance and this picks the one in force, so no adapter has to
+        # know that more than one exists and none of them can disagree about
+        # which is showing.
+        {
+          palette =
+            let
+              active = config.theme.palettes.${config.theme.appearance};
+            in
+            if active == null then
+              throw "theme \"${config.theme.name}\" has no ${config.theme.appearance} palette: set theme.palettes.${config.theme.appearance}, or point theme.appearance at one it does have"
+            else
+              active;
+        }
+      ];
     };
 }
