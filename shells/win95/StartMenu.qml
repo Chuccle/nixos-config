@@ -14,12 +14,12 @@ import "Tokens.js" as Tokens
 PopupWindow {
     id: root
 
-    property string bannerText: "Windows 95"
+    property string bannerText: Tokens.bannerText
 
     signal dismissed
 
-    implicitWidth: 260
-    implicitHeight: Math.min(480, layout.implicitHeight + Tokens.borderWidth * 2)
+    implicitWidth: Tokens.menuWidth
+    implicitHeight: Math.min(Tokens.menuHeight, layout.implicitHeight + Tokens.borderWidth * 2)
     color: "transparent"
 
     Bevel {
@@ -67,7 +67,7 @@ PopupWindow {
             // registered MIME handler.
             ListView {
                 width: parent.width
-                height: Math.min(360, contentHeight)
+                height: Math.min(contentHeight, Tokens.menuHeight - power.height)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 
@@ -91,39 +91,54 @@ PopupWindow {
                 }
             }
 
-            Rectangle {
-                width: parent.width
-                height: Tokens.borderWidth
-                color: Tokens.muted
-            }
+            // POWER
+            // Pinned under the programs list, which takes whatever height is
+            // left over — so the two unrelated magic numbers this used to
+            // carry (a 480-tall popup holding a 360-tall list) are now one
+            // token and a subtraction.
+            Column {
+                id: power
 
-            MenuItem {
                 width: parent.width
-                label: "Shut Down..."
-                onActivated: {
-                    root.dismissed();
-                    shutdown.running = true;
+
+                Rectangle {
+                    width: parent.width
+                    height: Tokens.borderWidth
+                    color: Tokens.muted
                 }
-            }
 
-            MenuItem {
-                width: parent.width
-                label: "Restart"
-                onActivated: {
-                    root.dismissed();
-                    restart.running = true;
+                MenuItem {
+                    width: parent.width
+                    label: "Shut Down..."
+                    onActivated: {
+                        root.dismissed();
+                        shutdown.running = true;
+                    }
+                }
+
+                MenuItem {
+                    width: parent.width
+                    label: "Restart"
+                    onActivated: {
+                        root.dismissed();
+                        restart.running = true;
+                    }
                 }
             }
         }
     }
 
+    // Absolute argv from the tokens, not a bare `systemctl`: the panel is
+    // started from labwc's autostart, which inherits greetd's environment
+    // rather than a login shell's PATH, so a bare name is a menu entry that
+    // does nothing.
     Process {
         id: shutdown
-        command: ["systemctl", "poweroff"]
+        command: Tokens.powerShutdown
     }
 
     Process {
         id: restart
-        command: ["systemctl", "reboot"]
+        command: Tokens.powerRestart
     }
 }

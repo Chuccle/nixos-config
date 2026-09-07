@@ -12,18 +12,37 @@
       ...
     }:
     let
-      inherit (lib.modules) mkDefault mkIf;
+      inherit (lib.attrsets) mapAttrsRecursive;
+      inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
+      inherit (lib.strings) optionalString;
       inherit (lib.types)
+        addCheck
         bool
+        enum
         float
-        int
         listOf
+        nonEmptyStr
         str
         submodule
         ;
+      inherit (lib.types.ints) unsigned;
 
       inherit (config) theme;
+
+      # Opacities and transparencies are fractions of 1, the same as
+      # `theme.blur.opacity`. Typed as such rather than as a bare float: DMS
+      # reads a 60 where it wanted 0.6 as "fully opaque, no complaints".
+      fraction = addCheck float (value: value >= 0.0 && value <= 1.0);
+
+      # PER-LEAF DEFAULTS
+      # `mkDefault` on the whole attrset is a single definition at one
+      # priority: a host that sets one field defines the option at a higher
+      # priority, `filterOverrides` then drops the default definition whole,
+      # and every field the host did not mention is suddenly unset. Applying
+      # it per leaf instead makes each field default on its own, which is what
+      # "a host can override any field" has always claimed.
+      defaults = mapAttrsRecursive (_path: mkDefault);
     in
     {
       imports = [ inputs.dms.nixosModules.dank-material-shell ];
@@ -43,36 +62,36 @@
             centerWidgets = mkOption { type = listOf str; };
             rightWidgets = mkOption { type = listOf str; };
 
-            spacing = mkOption { type = int; };
-            innerPadding = mkOption { type = int; };
-            bottomGap = mkOption { type = int; };
+            spacing = mkOption { type = unsigned; };
+            innerPadding = mkOption { type = unsigned; };
+            bottomGap = mkOption { type = unsigned; };
 
-            transparency = mkOption { type = float; };
-            widgetTransparency = mkOption { type = float; };
+            transparency = mkOption { type = fraction; };
+            widgetTransparency = mkOption { type = fraction; };
 
             squareCorners = mkOption { type = bool; };
             noBackground = mkOption { type = bool; };
             gothCornersEnabled = mkOption { type = bool; };
             gothCornerRadiusOverride = mkOption { type = bool; };
-            gothCornerRadiusValue = mkOption { type = int; };
+            gothCornerRadiusValue = mkOption { type = unsigned; };
 
             borderEnabled = mkOption { type = bool; };
-            borderColor = mkOption { type = str; };
-            borderOpacity = mkOption { type = float; };
-            borderThickness = mkOption { type = int; };
+            borderColor = mkOption { type = nonEmptyStr; };
+            borderOpacity = mkOption { type = fraction; };
+            borderThickness = mkOption { type = unsigned; };
 
             fontScale = mkOption { type = float; };
 
             autoHide = mkOption { type = bool; };
-            autoHideDelay = mkOption { type = int; };
+            autoHideDelay = mkOption { type = unsigned; };
             openOnOverview = mkOption { type = bool; };
             visible = mkOption { type = bool; };
 
             popupGapsAuto = mkOption { type = bool; };
-            popupGapsManual = mkOption { type = int; };
+            popupGapsManual = mkOption { type = unsigned; };
 
             widgetOutlineEnabled = mkOption { type = bool; };
-            shadowIntensity = mkOption { type = int; };
+            shadowIntensity = mkOption { type = unsigned; };
           };
         };
       };
@@ -92,45 +111,180 @@
             openOnOverview = mkOption { type = bool; };
             groupByApp = mkOption { type = bool; };
 
-            position = mkOption { type = int; };
-            iconSize = mkOption { type = int; };
-            spacing = mkOption { type = int; };
-            bottomGap = mkOption { type = int; };
-            margin = mkOption { type = int; };
+            # A dock with a Trash at the end of it is half of what makes a
+            # dock read as macOS rather than as a launcher strip.
+            showTrash = mkOption { type = bool; };
 
-            transparency = mkOption { type = float; };
-            indicatorStyle = mkOption { type = str; };
+            # Icons swell under the pointer. The other half of what makes a
+            # dock read as macOS — DMS ships the behaviour and leaves it off.
+            enlargeOnHover = mkOption { type = bool; };
+            enlargePercentage = mkOption { type = unsigned; };
+
+            position = mkOption { type = unsigned; };
+            iconSize = mkOption { type = unsigned; };
+            spacing = mkOption { type = unsigned; };
+            bottomGap = mkOption { type = unsigned; };
+            margin = mkOption { type = unsigned; };
+
+            transparency = mkOption { type = fraction; };
+            indicatorStyle = mkOption { type = nonEmptyStr; };
 
             borderEnabled = mkOption { type = bool; };
-            borderColor = mkOption { type = str; };
-            borderOpacity = mkOption { type = float; };
-            borderThickness = mkOption { type = int; };
+            borderColor = mkOption { type = nonEmptyStr; };
+            borderOpacity = mkOption { type = fraction; };
+            borderThickness = mkOption { type = unsigned; };
 
             launcherEnabled = mkOption { type = bool; };
           };
         };
       };
 
+      # DMS SHELL
+      # Everything that is neither the bar nor the dock: the glass, the
+      # typography, the depth and the theming DMS would otherwise take over.
+      # Same shape and rationale as `dmsBar`, with defaults derived from
+      # `theme` wherever a real mapping exists.
+      #
+      # This surface used to be an untyped attrset inline in the home module,
+      # which meant the only thing checking it was DMS — and DMS ignores what
+      # it does not understand, so a value of the wrong shape was a rebuild
+      # that changed nothing and said nothing. The key *names* are checked
+      # against upstream's SettingsData.qml at build time (see the home module
+      # below); this is the other half, checking the values.
+      options.dmsShell = mkOption {
+        description = "DankMaterialShell global (non-bar, non-dock) style tokens.";
+        type = submodule {
+          options = {
+            cornerRadius = mkOption { type = unsigned; };
+            popupTransparency = mkOption { type = fraction; };
+
+            font.family = mkOption { type = nonEmptyStr; };
+            font.mono = mkOption { type = nonEmptyStr; };
+            font.scale = mkOption { type = float; };
+
+            iconTheme = mkOption { type = nonEmptyStr; };
+
+            blur.enable = mkOption { type = bool; };
+            blur.foregroundLayers = mkOption { type = bool; };
+
+            # The bright hairline along the lit edge of a pane of glass —
+            # what separates one translucent surface from the one behind it,
+            # and the detail Tahoe's liquid glass is mostly made of.
+            blur.borderEnabled = mkOption { type = bool; };
+            blur.borderOpacity = mkOption { type = fraction; };
+
+            frame.enable = mkOption { type = bool; };
+            frame.blur = mkOption { type = bool; };
+            frame.opacity = mkOption { type = fraction; };
+            frame.rounding = mkOption { type = unsigned; };
+            frame.thickness = mkOption { type = unsigned; };
+            frame.closeGaps = mkOption { type = bool; };
+
+            # Glass floats above the wallpaper, so it casts a shadow. These
+            # are DMS's Material elevation knobs, which are the only depth
+            # controls it has — the look they are set to here is Apple's, not
+            # Material's.
+            elevation.enable = mkOption { type = bool; };
+            elevation.intensity = mkOption { type = unsigned; };
+            elevation.opacity = mkOption { type = unsigned; };
+            elevation.bar = mkOption { type = bool; };
+            elevation.popout = mkOption { type = bool; };
+            elevation.modal = mkOption { type = bool; };
+
+            rippleEffects = mkOption { type = bool; };
+            waveProgress = mkOption { type = bool; };
+
+            # How tray icons are recoloured. A menu bar full of each app's own
+            # brand colours is the loudest difference between this bar and the
+            # one it is dressed as; "monochrome" is what macOS does.
+            trayIconTint = mkOption {
+              type = enum [
+                "none"
+                "monochrome"
+                "primary"
+                "secondary"
+              ];
+            };
+
+            # macOS names the focused app in bold and shows no icon for it.
+            focusedWindow.showIcon = mkOption { type = bool; };
+
+            # Whether a fresh session is put back into the theme's declared
+            # appearance. On, the desktop always starts where the tokens say
+            # (and the GTK and Qt files, which are written at build time, are
+            # built for) and a runtime toggle lasts for that session. Off, DMS
+            # restores whichever mode it was left in.
+            applyAppearanceAtStartup = mkOption { type = bool; };
+
+            # "spotlight" is DMS's minimal centred search bar; "full" is the
+            # grid launcher with mode tabs.
+            launcherStyle = mkOption {
+              type = enum [
+                "full"
+                "spotlight"
+              ];
+            };
+
+            clock.format = mkOption {
+              type = enum [
+                "auto"
+                "12h"
+                "24h"
+              ];
+            };
+            clock.showSeconds = mkOption { type = bool; };
+
+            # Qt locale date pattern, or "" for the system default.
+            clock.dateFormat = mkOption { type = str; };
+
+            # Empty means "leave it to DMS"; `str` rather than `path` because
+            # that empty string is a legitimate value here.
+            lockWallpaper = mkOption { type = str; };
+
+            gtkTheming = mkOption { type = bool; };
+            qtTheming = mkOption { type = bool; };
+
+            # CONTROL CENTRE
+            # Field names are DMS's own JSON shape, so the list can be handed
+            # to settings.json as-is. `width` is a percentage of the row: 50
+            # is a half-width tile.
+            controlCenterWidgets = mkOption {
+              type = listOf (submodule {
+                options = {
+                  id = mkOption { type = nonEmptyStr; };
+                  enabled = mkOption { type = bool; };
+                  width = mkOption { type = unsigned; };
+                };
+              });
+            };
+          };
+        };
+      };
+
       config = {
-        dmsBar = mkDefault {
+        dmsBar = defaults {
+          # MENU BAR
+          # Laid out as macOS's, which is a strict shape: the launcher stands
+          # in for the Apple menu, the focused app's name sits beside it, and
+          # everything else is pushed right with the clock outermost. Nothing
+          # occupies the centre — that space belongs to the app menus on a
+          # Mac, and a bar with widgets in the middle never reads as one.
+          # DMS's CPU, memory, clipboard and weather widgets have no menu-bar
+          # counterpart, so they are left out rather than dressed up as one;
+          # a host that wants them back adds them to `rightWidgets`.
           leftWidgets = [
             "launcherButton"
             "workspaceSwitcher"
             "focusedWindow"
           ];
-          centerWidgets = [
-            "music"
-            "clock"
-            "weather"
-          ];
+          centerWidgets = [ ];
           rightWidgets = [
+            "music"
             "systemTray"
-            "clipboard"
-            "cpuUsage"
-            "memUsage"
-            "notificationButton"
             "battery"
             "controlCenterButton"
+            "notificationButton"
+            "clock"
           ];
 
           spacing = 4;
@@ -172,12 +326,16 @@
         # The dock is only worth showing on a glass theme — on a flat one it
         # is an opaque slab of chrome the design does not call for, so `show`
         # tracks the same token everything else does.
-        dmsDock = mkDefault {
+        dmsDock = defaults {
           show = theme.blur.enable;
           autoHide = true;
           smartAutoHide = true;
           openOnOverview = true;
           groupByApp = true;
+          showTrash = true;
+
+          enlargeOnHover = true;
+          enlargePercentage = 130;
 
           # 0 = bottom, matching SettingsData.Position.Bottom.
           position = 0;
@@ -197,6 +355,89 @@
           launcherEnabled = true;
         };
 
+        dmsShell = defaults {
+          inherit (theme) cornerRadius;
+          popupTransparency = theme.blur.opacity;
+
+          font.family = theme.font.sans.name;
+          font.mono = theme.font.mono.name;
+          font.scale = 1.0;
+
+          iconTheme = theme.icons.name;
+
+          blur.enable = theme.blur.enable;
+          blur.foregroundLayers = theme.blur.enable;
+          blur.borderEnabled = theme.blur.enable;
+          blur.borderOpacity = 0.35;
+
+          frame.enable = theme.blur.enable;
+          frame.blur = theme.blur.enable;
+          frame.opacity = theme.blur.opacity;
+          frame.rounding = theme.cornerRadius;
+          frame.thickness = theme.margin * 2;
+          frame.closeGaps = true;
+
+          elevation.enable = theme.blur.enable;
+          elevation.intensity = 12;
+          elevation.opacity = 30;
+
+          # Panels float and cast shadows; the menu bar does not. Tahoe's is
+          # a transparent strip fused to the top of the screen, and a shadow
+          # under it turns it back into a floating bar.
+          elevation.bar = false;
+          elevation.popout = theme.blur.enable;
+          elevation.modal = theme.blur.enable;
+
+          # Ripples and wavy progress bars are Material 3 signatures. On a
+          # stack dressed as macOS they are the two animations that give it
+          # away, so they are off by default and a Material-looking host can
+          # turn them back on.
+          rippleEffects = false;
+          waveProgress = false;
+
+          trayIconTint = "monochrome";
+          focusedWindow.showIcon = false;
+          launcherStyle = "spotlight";
+          applyAppearanceAtStartup = true;
+
+          # macOS runs a 12-hour menu-bar clock without seconds, with the
+          # weekday and date beside it: "Wed Apr 1  9:41 AM".
+          clock.format = "12h";
+          clock.showSeconds = false;
+          clock.dateFormat = "ddd MMM d";
+
+          # The lock screen is the one wallpaper surface DMS takes from
+          # settings.json rather than over IPC, so it can be set declaratively
+          # here even though the desktop wallpaper cannot.
+          lockWallpaper = if theme.wallpaper == null then "" else toString theme.wallpaper;
+
+          # This repo writes qt6ct and GTK itself (adapters/qt.mod.nix,
+          # adapters/gtk.mod.nix). Left enabled, DMS writes its own colours
+          # over both from its own palette.
+          gtkTheming = false;
+          qtTheming = false;
+
+          # Toggles first and sliders last, which is the order stock Tahoe's
+          # Control Centre uses; DMS ships the sliders on top.
+          controlCenterWidgets =
+            map
+              (id: {
+                inherit id;
+                enabled = true;
+                width = 50;
+              })
+              [
+                "wifi"
+                "bluetooth"
+                "audioOutput"
+                "audioInput"
+                "nightMode"
+                "darkMode"
+                "brightnessSlider"
+                "volumeSlider"
+              ];
+        };
+
         # Autostart via DMS's own user service (bound to
         # graphical-session.target, which niri-session provides) so the bar
         # does not depend on `dms` being on PATH. Static palette comes from
@@ -205,16 +446,61 @@
         programs.dank-material-shell.systemd.enable = true;
         programs.dank-material-shell.enableDynamicTheming = false;
 
-        # WALLPAPER
-        # DMS draws its own wallpaper layer (covering swaybg and friends), and
-        # its documented interface for it is IPC: `dms ipc call wallpaper set
-        # <path>`. The shell's socket comes up asynchronously, so retry until
-        # it accepts. User units do not get the system profile on PATH, so the
-        # retry loop's deps are provided explicitly: `dms` itself, coreutils,
-        # and quickshell — `dms ipc` shells out to `qs`, so without it the
-        # call dies with `exec: "qs": … $PATH`.
-        systemd.user.services.dms-wallpaper = mkIf (theme.wallpaper != null) {
-          description = "Set the DMS wallpaper from theme tokens";
+        # APPEARANCE AND WALLPAPER
+        # Two things DMS keeps in its own session state rather than in the
+        # settings file we write, so both are set over its documented IPC.
+        #
+        # The mode is not cosmetic: DMS writes the desktop's own `color-scheme`
+        # preference when it changes, which is what libadwaita apps follow — so
+        # a light palette with DMS left in dark mode gets dark GTK apps in
+        # light window frames.
+        #
+        # The shell's socket comes up asynchronously, so retry until it
+        # accepts. User units do not get the system profile on PATH, so the
+        # loop's deps are provided explicitly: `dms` itself, coreutils, and
+        # quickshell — `dms ipc` shells out to `qs`, so without it the call
+        # dies with `exec: "qs": … $PATH`.
+        # FOOT FOLLOWS THE MODE
+        # DMS owns the light/dark mode and persists it in its own session
+        # state. foot is the one application in this stack that can change
+        # colour scheme while it runs — SIGUSR1 for dark, SIGUSR2 for light,
+        # which is why both sections are written in modules/foot.mod.nix — but
+        # it has no way to hear that the mode changed. A path unit on that
+        # state file is the seam, and it catches every route into the toggle:
+        # the Control Centre tile, the keybind, and `dms ipc call theme`.
+        #
+        # The directory is watched rather than the file, because DMS replaces
+        # it by atomic rename and a rename is a directory event.
+        systemd.user.paths.foot-color-theme = {
+          description = "Watch the shell's light/dark mode for foot";
+          wantedBy = [ "graphical-session.target" ];
+          partOf = [ "graphical-session.target" ];
+          pathConfig.PathChanged = "%h/.local/state/DankMaterialShell";
+        };
+
+        systemd.user.services.foot-color-theme = {
+          description = "Switch foot's colour theme to match the shell's";
+          path = [
+            pkgs.coreutils
+            pkgs.jq
+            pkgs.procps
+          ];
+          serviceConfig.Type = "oneshot";
+          script = /* bash */ ''
+            set -euo pipefail
+            state="$HOME/.local/state/DankMaterialShell/session.json"
+            [ -e "$state" ] || exit 0
+
+            if [ "$(jq -r '.isLightMode // false' "$state")" = "true" ]; then
+              pkill -USR2 -x foot || true
+            else
+              pkill -USR1 -x foot || true
+            fi
+          '';
+        };
+
+        systemd.user.services.dms-appearance = {
+          description = "Apply the theme's appearance and wallpaper to DMS";
           wantedBy = [ "graphical-session.target" ];
           partOf = [ "graphical-session.target" ];
           after = [ "graphical-session.target" ];
@@ -227,7 +513,13 @@
           script = /* bash */ ''
             set -euo pipefail
             for _ in $(seq 30); do
-              if dms ipc call wallpaper set "${theme.wallpaper}"; then
+              # `getMode` doubles as the readiness probe: it answers only once
+              # the shell's IPC socket is up, and changes nothing when the
+              # session is left in whichever mode it was last toggled to.
+              if dms ipc call theme ${
+                if config.dmsShell.applyAppearanceAtStartup then theme.appearance else "getMode"
+              }; then
+                ${optionalString (theme.wallpaper != null) ''dms ipc call wallpaper set "${theme.wallpaper}"''}
                 exit 0
               fi
               sleep 1
@@ -250,10 +542,43 @@
       inherit (lib.attrsets) attrNames;
       inherit (lib.strings) concatStringsSep;
 
-      inherit (osConfig) dmsBar dmsDock theme;
+      inherit (osConfig)
+        dmsBar
+        dmsDock
+        dmsShell
+        theme
+        ;
       inherit (theme) palette;
 
       themeFile = "${config.directory}/.config/DankMaterialShell/dank-theme.json";
+
+      # Material 3 colour roles from one palette. Taken as an argument rather
+      # than read from `theme.palette`, because a theme with both appearances
+      # publishes both of them at once (see below).
+      roles = palette: {
+        primary = palette.accent.hex;
+        primaryText = palette.accentText.hex;
+        primaryContainer = palette.overlay.hex;
+        secondary = palette.blue.hex;
+
+        surface = palette.surface.hex;
+        surfaceText = palette.text.hex;
+        surfaceVariant = palette.overlay.hex;
+        surfaceVariantText = palette.subtext.hex;
+        surfaceTint = palette.accent.hex;
+
+        background = palette.base.hex;
+        backgroundText = palette.text.hex;
+        outline = palette.muted.hex;
+
+        surfaceContainer = palette.surface.hex;
+        surfaceContainerHigh = palette.overlay.hex;
+        surfaceContainerHighest = palette.overlay.hex;
+
+        error = palette.red.hex;
+        warning = palette.yellow.hex;
+        info = palette.blue.hex;
+      };
 
       # DMS reads barConfigs as a whole object per bar, so the fixed identity
       # fields (which bar this is, where it lives) are supplied here — those
@@ -277,24 +602,80 @@
         currentThemeName = "custom";
         customThemeFile = themeFile;
 
-        blurEnabled = theme.blur.enable;
-        blurForegroundLayers = theme.blur.enable;
+        # THEMING OWNERSHIP
+        # DMS can write GTK and qt6ct configuration of its own; this repo
+        # already does (adapters/gtk.mod.nix, adapters/qt.mod.nix), so it is
+        # told not to rather than left to race us for the same files.
+        gtkThemingEnabled = dmsShell.gtkTheming;
+        qtThemingEnabled = dmsShell.qtTheming;
+
+        # TYPOGRAPHY
+        # Unset, DMS renders in its own bundled defaults (Inter Variable /
+        # Fira Code) while every other surface in the session uses the theme's
+        # fonts — a mismatch that is most of what makes a themed desktop look
+        # assembled rather than designed.
+        fontFamily = dmsShell.font.family;
+        monoFontFamily = dmsShell.font.mono;
+        fontScale = dmsShell.font.scale;
+
+        # Both variants: `iconThemePerMode` is off, so either can be the one
+        # DMS reads, and the theme only ships one icon set anyway.
+        iconThemeDark = dmsShell.iconTheme;
+        iconThemeLight = dmsShell.iconTheme;
+
+        # DMS rounds its own surfaces independently of the compositor's window
+        # corners, so without this the panels stay at Material's 12px while
+        # every window is at the theme's radius.
+        inherit (dmsShell) cornerRadius;
+
+        blurEnabled = dmsShell.blur.enable;
+        blurForegroundLayers = dmsShell.blur.foregroundLayers;
+        blurBorderEnabled = dmsShell.blur.borderEnabled;
+        blurBorderOpacity = dmsShell.blur.borderOpacity;
+
+        # DEPTH
+        # A pane of glass that casts no shadow reads as a hole in the
+        # wallpaper rather than as a surface above it.
+        m3ElevationEnabled = dmsShell.elevation.enable;
+        m3ElevationIntensity = dmsShell.elevation.intensity;
+        m3ElevationOpacity = dmsShell.elevation.opacity;
+        barElevationEnabled = dmsShell.elevation.bar;
+        popoutElevationEnabled = dmsShell.elevation.popout;
+        modalElevationEnabled = dmsShell.elevation.modal;
+
+        enableRippleEffects = dmsShell.rippleEffects;
+        waveProgressEnabled = dmsShell.waveProgress;
+
+        systemTrayIconTintMode = dmsShell.trayIconTint;
+        focusedWindowShowIcon = dmsShell.focusedWindow.showIcon;
+        inherit (dmsShell) launcherStyle;
+
+        clockFormat = dmsShell.clock.format;
+        clockDateFormat = dmsShell.clock.dateFormat;
+        showSeconds = dmsShell.clock.showSeconds;
+
+        lockScreenWallpaperPath = dmsShell.lockWallpaper;
+
+        inherit (dmsShell) controlCenterWidgets;
 
         # GLASS
         # `frame*` draws DMS's rounded screen-edge frame — the detail that
         # makes the whole session read as one continuous pane of glass rather
         # than a bar floating over a wallpaper.
-        frameEnabled = theme.blur.enable;
-        frameBlurEnabled = theme.blur.enable;
-        frameOpacity = theme.blur.opacity;
-        frameRounding = theme.cornerRadius;
-        frameThickness = theme.margin * 2;
-        frameCloseGaps = true;
+        frameEnabled = dmsShell.frame.enable;
+        frameBlurEnabled = dmsShell.frame.blur;
+        frameOpacity = dmsShell.frame.opacity;
+        frameRounding = dmsShell.frame.rounding;
+        frameThickness = dmsShell.frame.thickness;
+        frameCloseGaps = dmsShell.frame.closeGaps;
 
-        popupTransparency = theme.blur.opacity;
+        inherit (dmsShell) popupTransparency;
         dockTransparency = dmsDock.transparency;
 
         showDock = dmsDock.show;
+        dockShowTrash = dmsDock.showTrash;
+        appsDockEnlargeOnHover = dmsDock.enlargeOnHover;
+        appsDockEnlargePercentage = dmsDock.enlargePercentage;
         dockAutoHide = dmsDock.autoHide;
         dockSmartAutoHide = dmsDock.smartAutoHide;
         dockOpenOnOverview = dmsDock.openOnOverview;
@@ -324,8 +705,12 @@
         pkgs.runCommand "dms-settings.json"
           {
             nativeBuildInputs = [ pkgs.jq ];
-            passAsFile = [ "keys" ];
+            passAsFile = [
+              "keys"
+              "widgets"
+            ];
             keys = concatStringsSep "\n" (attrNames settings);
+            widgets = concatStringsSep "\n" (dmsBar.leftWidgets ++ dmsBar.centerWidgets ++ dmsBar.rightWidgets);
           }
           ''
             known="$(mktemp)"
@@ -339,6 +724,23 @@
               exit 1
             fi
 
+            # BAR WIDGETS
+            # A widget id the bar cannot resolve renders nothing and reports
+            # nothing, so the layout above is checked the same way the keys
+            # are: against WidgetHost's component map, which is what actually
+            # decides whether an id draws. Plugin widgets are namespaced
+            # `plugin:widget` and resolved at runtime, so they are skipped.
+            knownWidgets="$(mktemp)"
+            grep -oP '^\s*"\K[\w-]+(?=":\s*components\.)' \
+              ${inputs.dms}/quickshell/Modules/DankBar/WidgetHost.qml | sort -u > "$knownWidgets"
+
+            unknownWidgets="$({ grep -v ':' "$widgetsPath" || true; } | sort -u | comm -23 - "$knownWidgets")"
+            if [ -n "$unknownWidgets" ]; then
+              echo "bar widgets not present in this DankMaterialShell:" >&2
+              echo "$unknownWidgets" >&2
+              exit 1
+            fi
+
             cp ${pkgs.writers.writeJSON "dms-settings-unchecked.json" settings} $out
           '';
     in
@@ -346,36 +748,28 @@
       # DMS THEME
       # DMS's documented custom-theme mechanism (docs/CUSTOM_THEMES.md): a JSON
       # file of Material 3 color roles, activated from settings.json via
-      # currentThemeName = "custom". Tokens map onto the roles below; a flat
-      # (variant-less) definition applies to both light and dark modes.
+      # currentThemeName = "custom". Tokens map onto the roles below.
+      #
+      # A theme that declares both palettes is written in the variant form, and
+      # that is what makes the mode toggle mean something: DMS keeps both sets
+      # and recolours the whole shell — bar, dock, control centre, popouts,
+      # notifications, lock screen — the moment the mode changes, with no
+      # rebuild. A theme with one palette is written flat, as before, and
+      # applies to both modes.
       xdg.config.files."DankMaterialShell/dank-theme.json" = {
         generator = pkgs.writers.writeJSON "dms-theme.json";
-        value = {
-          inherit (theme) name;
-
-          primary = palette.accent.hex;
-          primaryText = palette.accentText.hex;
-          primaryContainer = palette.overlay.hex;
-          secondary = palette.blue.hex;
-
-          surface = palette.surface.hex;
-          surfaceText = palette.text.hex;
-          surfaceVariant = palette.overlay.hex;
-          surfaceVariantText = palette.subtext.hex;
-          surfaceTint = palette.accent.hex;
-
-          background = palette.base.hex;
-          backgroundText = palette.text.hex;
-          outline = palette.muted.hex;
-
-          surfaceContainer = palette.surface.hex;
-          surfaceContainerHigh = palette.overlay.hex;
-          surfaceContainerHighest = palette.overlay.hex;
-
-          error = palette.red.hex;
-          warning = palette.yellow.hex;
-          info = palette.blue.hex;
-        };
+        value =
+          if theme.palettes.dark != null && theme.palettes.light != null then
+            {
+              dark = roles theme.palettes.dark // {
+                name = "${theme.name}-dark";
+              };
+              light = roles theme.palettes.light // {
+                name = "${theme.name}-light";
+              };
+            }
+          else
+            roles palette // { inherit (theme) name; };
       };
 
       # hjem replaces this file on every rebuild, so anything tweaked in the

@@ -111,6 +111,7 @@ in
 
     desktopSystem = [
       desktopModules.labwc
+      desktopModules.win95-panel
       desktopModules.qt
       desktopModules.theme-win95
     ];

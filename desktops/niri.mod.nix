@@ -1,16 +1,34 @@
 {
   desktopModules.niri =
-    { lib, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
+      inherit (lib.attrsets) mapAttrsRecursive;
       inherit (lib.meta) getExe';
       inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
       inherit (lib.types)
+        bool
         float
         int
         str
         submodule
         ;
+
+      inherit (config) theme;
+
+      # PER-LEAF DEFAULTS
+      # `mkDefault` on the whole attrset is a single definition at one
+      # priority: a host that sets one field defines the option at a higher
+      # priority, `filterOverrides` then drops the default definition whole,
+      # and every field the host did not mention is suddenly unset. Applying
+      # it per leaf instead makes each field default on its own, which is what
+      # "a host can override any field" has always claimed.
+      defaults = mapAttrsRecursive (_path: mkDefault);
     in
     {
       # NIRI GLASS
@@ -26,10 +44,14 @@
             spread = mkOption { type = int; };
             offsetX = mkOption { type = int; };
             offsetY = mkOption { type = int; };
-            # Hex alpha byte (00-ff) appended to `theme.palette.base.hex`, not a
-            # 0-1 float, so it can be spliced directly into the KDL color
-            # string without a float->hex conversion helper.
+            # Hex alpha byte (00-ff) appended to `theme.palette.edgeShade.hex`,
+            # not a 0-1 float, so it can be spliced directly into the KDL
+            # color string without a float->hex conversion helper.
             opacityHex = mkOption { type = str; };
+
+            # The same for a window that is not focused. On a glass theme the
+            # shadow is the only thing marking focus, so the two differ.
+            inactiveOpacityHex = mkOption { type = str; };
           };
         };
       };
@@ -46,6 +68,32 @@
             offset = mkOption { type = float; };
             noise = mkOption { type = float; };
             saturation = mkOption { type = float; };
+          };
+        };
+      };
+
+      # WINDOW MODEL
+      # niri tiles; the design this stack is dressed as does not. Both knobs
+      # are what separate "a tiling compositor wearing a Mac's colours" from
+      # something that behaves like the thing it looks like, and both are
+      # declared rather than derived so a host can keep the tiling it came for.
+      options.niriWindows = mkOption {
+        description = "niri window-model tokens.";
+        type = submodule {
+          options = {
+            # Windows open in niri's floating layer instead of the scrolling
+            # tiled one: free overlap, drag anywhere, which is the model every
+            # window in the reference is using. The tiled layer is still there
+            # — Mod+V moves a window into it.
+            floating = mkOption { type = bool; };
+
+            # Let applications draw their own decorations. niri draws no
+            # titlebars at all, so asking clients not to means every window
+            # ends up without one — while on a Mac every window has a title
+            # bar with its controls at the left. GTK apps under WhiteSur draw
+            # exactly that; Qt apps get the adwaita decoration plugin (see
+            # adapters/qt.mod.nix), which is a title bar, if not that one.
+            clientDecorations = mkOption { type = bool; };
           };
         };
       };
@@ -71,23 +119,29 @@
         # leaves that target inactive and the session empty.
         desktop.sessionCommand = getExe' pkgs.niri "niri-session";
 
-        niriShadow = mkDefault {
+        niriShadow = defaults {
           softness = 40;
           spread = 4;
           offsetX = 0;
           offsetY = 8;
           opacityHex = "b3";
+          inactiveOpacityHex = "59";
         };
 
         # Three passes at a wide offset is the depth Tahoe's glass reads at;
         # the slight desaturation lift keeps colour behind the glass from
         # going flat, and a trace of noise stops wide blur from banding on a
         # gradient wallpaper.
-        niriBlur = mkDefault {
+        niriBlur = defaults {
           passes = 3;
           offset = 5.0;
           noise = 0.04;
           saturation = 1.4;
+        };
+
+        niriWindows = defaults {
+          floating = theme.blur.enable;
+          clientDecorations = theme.blur.enable;
         };
 
         niriAnimationSlowdown = mkDefault 0.6;
@@ -103,6 +157,7 @@
         niriAnimationSlowdown
         niriBlur
         niriShadow
+        niriWindows
         theme
         ;
       inherit (theme) palette;
@@ -137,6 +192,17 @@
         "ipc"
         "call"
         "spotlight"
+        "toggle"
+      ];
+
+      # Light/dark from the keyboard. The Control Centre has a tile for it and
+      # both routes end in the same session state, which is what the shell,
+      # the terminal and every portal-following app watch.
+      dmsThemeToggle = spawn [
+        "dms"
+        "ipc"
+        "call"
+        "theme"
         "toggle"
       ];
 
@@ -180,7 +246,8 @@
             (leaf "gaps" [ theme.padding ])
             (leaf "center-focused-column" [ "never" ])
             (leaf "background-color" [ palette.base.hex ])
-
+          ]
+          ++ optionals (!glass) [
             (block "border" [
               (leaf "width" [ theme.borderWidth ])
               (leaf "active-color" [ palette.accent.hex ])
@@ -194,6 +261,19 @@
             ])
           ]
           ++ optionals glass [
+            {
+              name = "border";
+              comment = ''
+                A glass desktop marks the focused window by the depth of its
+                shadow, never by drawing a coloured frame around it: an accent
+                border on every focused window is the single loudest tell that
+                this is a tiling compositor rather than the design it is
+                dressed as. The shadow below does the work instead.'';
+              children = singleton (call "off");
+            }
+
+            (block "focus-ring" (singleton (call "off")))
+
             (block "shadow" [
               (call "on")
               (leaf "softness" [ niriShadow.softness ])
@@ -205,12 +285,13 @@
                   y = niriShadow.offsetY;
                 };
               }
-              (leaf "color" [ "${palette.base.hex}${niriShadow.opacityHex}" ])
+              # `edgeShade`, not `base`: a shadow tinted with the backdrop
+              # colour it falls on reads as a grey outline rather than depth.
+              (leaf "color" [ "${palette.edgeShade.hex}${niriShadow.opacityHex}" ])
+              (leaf "inactive-color" [ "${palette.edgeShade.hex}${niriShadow.inactiveOpacityHex}" ])
             ])
           ]
         ))
-
-        (call "prefer-no-csd")
 
         {
           name = "animations";
@@ -220,6 +301,11 @@
             faster than niri's default.'';
           children = singleton (leaf "slowdown" [ niriAnimationSlowdown ]);
         }
+      ]
+      ++ optionals (!niriWindows.clientDecorations) [
+        # Nothing draws a title bar otherwise: niri has no such concept, so
+        # asking clients to skip theirs leaves every window without one.
+        (call "prefer-no-csd")
       ]
       ++ optionals glass [
         {
@@ -243,6 +329,19 @@
           children = singleton (leaf "backdrop-color" [ palette.base.hex ]);
         }
       ]
+      ++ optionals niriWindows.floating [
+        {
+          name = "window-rule";
+          comment = ''
+            Windows open floating. This is the single largest difference
+            between a scrollable tiler and the desktop it is dressed as: on a
+            Mac a new window lands where it lands, overlaps what was there,
+            and is dragged around by hand. The tiled layer is still one
+            keystroke away (Mod+V), so nothing is lost — it just stops being
+            what every window gets by default.'';
+          children = singleton (leaf "open-floating" [ true ]);
+        }
+      ]
       ++ [
         (block "window-rule" (
           [
@@ -251,17 +350,21 @@
           ]
           ++ optionals glass [
             {
-              name = "opacity";
-              args = singleton theme.blur.opacity;
+              name = "background-effect";
               comment = ''
-                Windows have to be translucent for blur behind them to be
-                visible at all; blur.opacity is what every other surface in
-                the stack already tracks.'';
+                Blur behind windows, but no blanket opacity: on the design
+                this is dressed as, glass is the chrome — bars, docks,
+                sidebars, toolbars — and application windows are opaque.
+                Forcing every window translucent is the tell that gives a
+                rice away, and it makes light-on-light text unreadable. An
+                app that asks for transparency itself (foot sets
+                blur.opacity as its alpha) gets the blur; one that does not
+                stays solid, which is what a Mac looks like.'';
+              children = [
+                (leaf "xray" [ true ])
+                (leaf "blur" [ true ])
+              ];
             }
-            (block "background-effect" [
-              (leaf "xray" [ true ])
-              (leaf "blur" [ true ])
-            ])
           ]
         ))
       ]
@@ -269,16 +372,15 @@
         {
           name = "window-rule";
           comment = ''
-            Media opts back out of the glass: translucency over a moving
-            picture reads as a rendering fault, and there is nothing
-            meaningful behind a player worth blurring. niri 26.04 has no
-            is-fullscreen match property, so this keys on app id.'';
+            Media opts back out of the glass: there is nothing meaningful
+            behind a player worth blurring, and sampling a moving picture
+            every frame costs power for an effect nobody sees. niri 26.04
+            has no is-fullscreen match property, so this keys on app id.'';
           children = [
             {
               name = "match";
               props."app-id" = "^(mpv|org\\.kde\\.haruna|helium)$";
             }
-            (leaf "opacity" [ 1.0 ])
             (block "background-effect" [
               (leaf "blur" [ false ])
               (leaf "xray" [ false ])
@@ -296,7 +398,10 @@
           ++ bind "Up" (call "focus-window-up")
           ++ bind "Down" (call "focus-window-down")
           ++ workspaceBinds
+          ++ bind "V" (call "toggle-window-floating")
           ++ [
+            (block "Mod+Shift+V" (singleton (call "switch-focus-between-floating-and-tiling")))
+            (block "Mod+Shift+T" (singleton dmsThemeToggle))
             (block "Mod+Shift+E" (singleton (call "quit")))
             (block "Print" (singleton (call "screenshot")))
           ]

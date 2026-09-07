@@ -23,7 +23,7 @@ Bevel {
     Text {
         id: label
         anchors.centerIn: parent
-        text: Qt.formatDateTime(clock.date, "h:mm AP")
+        text: Qt.formatDateTime(clock.date, Tokens.clockFormat)
         font.family: Tokens.fontFamily
         font.pixelSize: Tokens.fontSize
         color: Tokens.text
