@@ -1,0 +1,5 @@
+.desktop-workflow/
+.jj/
+result
+result-*
+workflow/__pycache__/

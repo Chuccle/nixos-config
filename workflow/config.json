@@ -1,0 +1,29 @@
+{
+  "artifactRoot": "C:\\Projects\\nixos-desktop-runs",
+  "vmRoot": "C:\\Projects\\Virtual Machines\\nixos-desktop-tests",
+  "composeProject": "nixos-config_builder",
+  "container": "nixos-config_builder-devcontainer-1",
+  "nixStateDir": "/nix/var/nix/workflow-state",
+  "vmrun": "C:\\Program Files\\VMware\\VMware Workstation\\vmrun.exe",
+  "vmwareLeaseFiles": [
+    "C:\\ProgramData\\VMware\\vmnetdhcp.leases",
+    "C:\\ProgramData\\VMware\\vmnetdhcp.leases~"
+  ],
+  "jj": "C:\\Projects\\nixos-desktop-runs\\tools\\jj\\jj.exe",
+  "candidateRoot": "C:\\Projects\\nixos-config-desktop",
+  "baselineRevision": "main@origin",
+  "maxRepairs": 3,
+  "maxHours": 6,
+  "buildTimeoutMinutes": 150,
+  "bootTimeoutSeconds": 180,
+  "metricsTimeoutSeconds": 420,
+  "settleSeconds": 60,
+  "sampleSeconds": 120,
+  "confirmBoots": 3,
+  "ramLimitGiB": 1.5,
+  "cpuLimitPercent": 2,
+  "readyLimitSeconds": 60,
+  "regressionPercent": 10,
+  "cpuTolerancePoints": 0.2,
+  "resolutions": ["1920x1080", "1280x720"]
+}

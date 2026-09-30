@@ -1,0 +1,69 @@
+{
+  "references": [
+    "golden-gate-official-design",
+    "golden-gate-official-desktop",
+    "golden-gate-official-page",
+    "golden-gate-ars-review",
+    "win95-start-menu-screenshot",
+    "win95-full-desktop",
+    "win95-guidebook-gallery",
+    "win95-official-manual"
+  ],
+  "functional": {
+    "common": [
+      "application-launchers",
+      "ida-dependency-closure",
+      "ida-analysis-roundtrip",
+      "launch-ghostty",
+      "launch-dolphin",
+      "launch-ark",
+      "launch-helium",
+      "launch-ida",
+      "file-operations-and-archive-dialog",
+      "shutdown-confirmation"
+    ],
+    "tahoe": ["keyboard-focus-and-close"],
+    "win95": [
+      "floating-overlap",
+      "taskbar-hide-restore-geometry",
+      "maximize-restore",
+      "show-desktop-independent-hides",
+      "restart-recovery",
+      "interrupted-commands-stale-ids",
+      "drag-resize-alt-tab-alt-f4"
+    ]
+  },
+  "common": [
+    "readable-text",
+    "unclipped-chrome",
+    "consistent-app-theme",
+    "usable-dialogs",
+    "launcher-entries",
+    "keyboard-navigation",
+    "browser-rendering",
+    "file-operations",
+    "archive-handling",
+    "shutdown-confirmation"
+  ],
+  "tahoe": [
+    "glass-shell-surfaces",
+    "top-bar",
+    "bottom-dock",
+    "launcher-search",
+    "wallpaper",
+    "focus-navigation"
+  ],
+  "win95": [
+    "teal-wallpaper",
+    "silver-bevels",
+    "navy-selection",
+    "square-windows",
+    "start-menu",
+    "taskbar",
+    "tray-clock"
+  ],
+  "limitations": [
+    "Win95 moves hidden windows to a named parking workspace to emulate minimization. That workspace remains visible in niri's overview. App titlebar minimize requests are not supported by niri; use the taskbar or Alt+M.",
+    "Applications provide their own titlebars where supported. Move with Super+left-drag and resize with Super+right-drag."
+  ]
+}

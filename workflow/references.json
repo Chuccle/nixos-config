@@ -1,0 +1,70 @@
+[
+  {
+    "id": "golden-gate-official-design",
+    "edition": "tahoe",
+    "kind": "image",
+    "official": true,
+    "url": "https://www.apple.com/v/os/g/images/macos/highlights/liquid_glass__bf6kssw93vrm_large.jpg",
+    "sourcePage": "https://www.apple.com/os/macos/",
+    "focus": "Liquid Glass contrast, toolbar texture, corner shape, and visual hierarchy"
+  },
+  {
+    "id": "golden-gate-official-desktop",
+    "edition": "tahoe",
+    "kind": "image",
+    "official": true,
+    "url": "https://www.apple.com/v/os/g/images/shared/welcome/hero_macbook__d6o4ngynokom_large.jpg",
+    "sourcePage": "https://www.apple.com/os/macos/",
+    "focus": "Full desktop relationship between the menu bar, floating windows, dock, wallpaper, and application chrome"
+  },
+  {
+    "id": "golden-gate-official-page",
+    "edition": "tahoe",
+    "kind": "document",
+    "official": true,
+    "url": "https://www.apple.com/os/macos/",
+    "focus": "Apple's stated Golden Gate design goals: readability, consistency, uniform toolbars, edge-to-edge sidebars, and updated window shapes"
+  },
+  {
+    "id": "golden-gate-ars-review",
+    "edition": "tahoe",
+    "kind": "document",
+    "official": false,
+    "url": "https://arstechnica.com/gadgets/2026/09/macos-27-golden-gate-the-ars-technica-review/",
+    "focus": "Selective independent assessment of Golden Gate refinements and readability"
+  },
+  {
+    "id": "win95-start-menu-screenshot",
+    "edition": "win95",
+    "kind": "image",
+    "official": false,
+    "url": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Startmen%C3%BC_Windows_4.00.346_%28Avvio%29.png",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Startmen%C3%BC_Windows_4.00.346_(Avvio).png",
+    "focus": "Authentic Start menu, taskbar, bevel, spacing, typography, navy selection, and teal desktop"
+  },
+  {
+    "id": "win95-full-desktop",
+    "edition": "win95",
+    "kind": "image",
+    "official": false,
+    "url": "https://guidebookgallery.org/pics/gui/desktop/full/win95.png",
+    "sourcePage": "https://guidebookgallery.org/screenshots/win95",
+    "focus": "Original 640 by 480 desktop with overlapping applications, taskbar, teal background, and window proportions"
+  },
+  {
+    "id": "win95-guidebook-gallery",
+    "edition": "win95",
+    "kind": "document",
+    "official": false,
+    "url": "https://guidebookgallery.org/guis/windows/win95/",
+    "focus": "Curated original Windows 95 screenshots, tour, icons, and interface guidance"
+  },
+  {
+    "id": "win95-official-manual",
+    "edition": "win95",
+    "kind": "document",
+    "official": true,
+    "url": "https://bitsavers.org/pdf/microsoft/windows_95/Introducing_Microsoft_Windows_95_1995.pdf",
+    "focus": "Microsoft's original taskbar, Start menu, task switching, and window-management behavior"
+  }
+]
