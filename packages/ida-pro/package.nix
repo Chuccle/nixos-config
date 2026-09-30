@@ -13,11 +13,8 @@
   lib,
   libdrm,
   libGL,
-  libice,
   libkrb5,
   libsecret,
-  libsm,
-  libunwind,
   libx11,
   libxau,
   libxcb,
@@ -29,45 +26,46 @@
   libxi,
   libxkbcommon,
   libxrender,
+  libxtst,
   makeDesktopItem,
   makeWrapper,
+  nodejs,
   openssl,
   patchelf,
   python313,
-  qt6,
   runCommand,
   stdenv,
-  writers,
+  xcb-util-cursor,
   zlib,
 }:
 let
   inherit (lib.licenses) unfree;
   inherit (lib.lists) singleton;
   inherit (lib.sourceTypes) binaryNativeCode;
-  inherit (lib.strings) readFile;
 
-  python = python313.withPackages (pyPkgs: (singleton pyPkgs.rpyc));
-  idaPatch = writers.writePython3Bin "ida-patch" { flakeIgnore = singleton "E501"; } (
-    readFile ./ida-patch.py
-  );
+  version = "9.4.260714";
+  releaseUrl = "https://vaclive.party/software/ida-pro/releases/download/${version}";
+
+  installer = fetchurl {
+    url = "${releaseUrl}/ida-pro_94_x64linux.run";
+    sha256 = "eabb64c3c849d3858759558359e9cebcf17e2a91bcc60523533df8b84462aa54";
+  };
+
+  keygen = fetchurl {
+    url = "${releaseUrl}/keygen.js";
+    sha256 = "cc570f24effc008a4ebd514cc3c4fbb5db05bbdeb7f420b79fdf4ed08a4611e2";
+  };
 
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "ida-pro";
-  version = "9.3.260213";
+  inherit version;
 
-  src =
-    let
-      raw = fetchurl {
-        url = "https://vaclive.party/software/ida-pro/releases/download/9.3.260213/ida-pro_93_x64linux.run";
-        sha256 = "2ed43ae4bb84d74dcae6f0099210dfa8d61bfea4952f5f9a07a9aae16cb70f82";
-      };
-    in
-    runCommand "ida-installer.run" { nativeBuildInputs = singleton patchelf; } /* bash */ ''
-      cp ${raw} $out
-      chmod 755 $out
-      patchelf --set-interpreter ${stdenv.cc.bintools.dynamicLinker} $out
-    '';
+  src = runCommand "ida-installer.run" { nativeBuildInputs = singleton patchelf; } /* bash */ ''
+    cp ${installer} $out
+    chmod 755 $out
+    patchelf --set-interpreter ${stdenv.cc.bintools.dynamicLinker} $out
+  '';
 
   desktopItem = makeDesktopItem {
     name = "IDA Pro";
@@ -86,14 +84,11 @@ stdenv.mkDerivation (finalAttrs: {
     copyDesktopItems
     autoPatchelfHook
     file
-    idaPatch
-    qt6.wrapQtAppsHook
+    nodejs
   ];
 
-  # We just get a runfile in $src, so no need to unpack it.
   dontUnpack = true;
 
-  # Add everything to the RPATH, in case IDA decides to dlopen things.
   buildInputs = finalAttrs.runtimeDependencies;
   runtimeDependencies = [
     cairo
@@ -106,47 +101,44 @@ stdenv.mkDerivation (finalAttrs: {
     libGL
     libkrb5
     libsecret
-    qt6.qtbase
-    qt6.qtwayland
-    libunwind
+    python313
     libxkbcommon
     openssl.out
     stdenv.cc.cc
-    libice
-    libsm
     libx11
     libxau
     libxcb
     libxext
     libxi
     libxrender
+    libxtst
     libxcbImage
     libxcbKeysyms
     libxcbRenderUtil
     libxcbWm
+    xcb-util-cursor
     zlib
     curl.out
-    python
   ];
-
-  dontWrapQtApps = true;
 
   installPhase = /* bash */ ''
     runHook preInstall
 
     mkdir -p $out/{bin,lib,opt/ida-pro,homeless-shelter/.local/share/applications}
 
-    # HOME is set to a throwaway dir for its stray .desktop write.
     HOME=$out/homeless-shelter $src \
       --mode unattended --prefix $out/opt/ida-pro
     rm -rf $out/homeless-shelter
 
-    # Expose IDA's shared libraries so autoPatchelf and wrappers can find them.
+    rm $out/opt/ida-pro/libQt6WaylandEglCompositorHwIntegration.so.6
+
+    rm $out/opt/ida-pro/plugins/platforms/libqeglfs.so
+    rm $out/opt/ida-pro/plugins/wayland-shell-integration/libwl-shell-plugin.so
+
     for lib in $out/opt/ida-pro/*.so $out/opt/ida-pro/*.so.6; do
       ln -s $lib $out/lib/$(basename $lib)
     done
 
-    # IDA dlopens these at runtime; make them explicit so autoPatchelf can resolve them.
     for needed in libpython3.13.so libcrypto.so libsecret-1.so.0; do
       patchelf --add-needed $needed $out/lib/libida.so
     done
@@ -156,8 +148,6 @@ stdenv.mkDerivation (finalAttrs: {
     wrapProgram $out/opt/ida-pro/ida \
       --prefix IDADIR          : $out/opt/ida-pro \
       --prefix QT_PLUGIN_PATH  : $out/opt/ida-pro/plugins \
-      --prefix PYTHONPATH      : $out/opt/ida-pro/idalib/python \
-      --prefix PATH            : ${python}/bin:$out/opt/ida-pro \
       --prefix LD_LIBRARY_PATH : $out/lib
     ln -s $out/opt/ida-pro/ida $out/bin/ida
 
@@ -165,10 +155,6 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   postInstall = /* bash */ ''
-    # The installer marks everything executable; only real ELF executables
-    # should keep that bit (`.so` shared objects are dlopen'd, not run).
-    # Detecting via `file` instead of a fixed name list also covers the
-    # debug servers and dev tools under dbgsrv/ and tools/.
     find $out/opt/ida-pro -type f -exec sh -c '
       for f; do
         case "$(file -b "$f")" in
@@ -178,10 +164,12 @@ stdenv.mkDerivation (finalAttrs: {
       done
     ' sh {} +
 
+    # The sweep above classifies the generated shell wrapper as non-ELF.
+    chmod +x $out/opt/ida-pro/ida
+
     rm -f $out/opt/ida-pro/{uninstall,Uninstall}*
 
-    # Requires running in current working directory of the ida installation, so we cd into it first
-    cd $out/opt/ida-pro && ida-patch --oneshot
+    cd $out/opt/ida-pro && node ${keygen}
 
     substituteInPlace $out/opt/ida-pro/cfg/hexrays.cfg \
       --replace "MAX_FUNCSIZE            = 64" "MAX_FUNCSIZE            = 1024"
@@ -192,7 +180,7 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://hex-rays.com/ida-pro/";
     license = unfree;
     mainProgram = "ida";
-    platforms = singleton "x86_64-linux"; # Right now, the installation script only supports Linux.
+    platforms = singleton "x86_64-linux";
     sourceProvenance = singleton binaryNativeCode;
   };
 })
