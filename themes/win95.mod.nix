@@ -1,14 +1,14 @@
 {
   desktopModules.theme-win95 =
-    { pkgs, ... }:
+    { lib, pkgs, ... }:
+    let
+      inherit (lib.modules) mkDefault;
+    in
     {
-      # WIN95 (retro, flat, hard bevels)
-      # Teal desktop, silver 3D chrome, navy selection. Chicago95 (nixpkgs)
-      # supplies the GTK theme, icons and VGA font; it ships no cursors, so the
-      # classic DMZ X11 cursors stand in. Composed by a host to override the
-      # default theme.
       config.theme = {
         name = "win95";
+
+        appearance = mkDefault "light";
 
         cornerRadius = 0;
         borderWidth = 2;
@@ -34,7 +34,7 @@
         cursor.name = "Vanilla-DMZ";
         cursor.package = pkgs.vanilla-dmz;
 
-        palette = {
+        palettes.light = {
           base = "#008080";
           surface = "#c0c0c0";
           overlay = "#dfdfdf";
@@ -50,6 +50,9 @@
           green = "#008000";
           yellow = "#808000";
           blue = "#000080";
+
+          edgeLight = "#ffffff";
+          edgeShade = "#000000";
         };
 
         blur.enable = false;

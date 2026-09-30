@@ -2,6 +2,7 @@
   flake.nixosModules.theme =
     { lib, pkgs, ... }:
     let
+      inherit (lib.attrsets) genAttrs;
       inherit (lib.lists) foldl';
       inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
@@ -12,9 +13,11 @@
         toLower
         ;
       inherit (lib.types)
+        addCheck
         bool
+        enum
         float
-        int
+        nonEmptyStr
         nullOr
         package
         path
@@ -22,6 +25,7 @@
         strMatching
         submodule
         ;
+      inherit (lib.types.ints) unsigned;
 
       hexDigits = {
         "0" = 0;
@@ -43,21 +47,24 @@
       };
 
       # DESIGN TOKENS
-      # DE-agnostic data every adapter reads. The default below is the base look;
-      # a composed theme module (themes/*.mod.nix) overrides `theme` wholesale.
 
-      # A colour token. Written as `#rrggbb` and read back as every spelling
-      # the adapters need, because they do not agree on one: foot wants the
-      # bare digits, qt6ct wants `#aarrggbb` with alpha first, KDE colour
-      # schemes want a decimal triplet. Each of those used to be its own
-      # helper — one in `lib/`, two inline — so the same conversion existed
-      # three times and no consumer could see which spelling it was getting.
-      #
-      # `apply` puts them on the option instead. The conversion lives once,
-      # beside the data it converts; the type checks the input on the way in,
-      # so a mistyped token is an eval error rather than a colour that silently
-      # renders black; and every adapter reads a named field, which says at the
-      # call site which spelling it asked for.
+      colorNames = [
+        "accent"
+        "accentText"
+        "base"
+        "blue"
+        "edgeLight"
+        "edgeShade"
+        "green"
+        "muted"
+        "overlay"
+        "red"
+        "subtext"
+        "surface"
+        "text"
+        "yellow"
+      ];
+
       colorOption = mkOption {
         type = strMatching "#[0-9a-fA-F]{6}";
         apply =
@@ -81,95 +88,116 @@
             rgb = "${toString (byte 0)},${toString (byte 2)},${toString (byte 4)}";
           };
       };
-    in
-    {
-      options.theme = mkOption {
-        description = "Active theme tokens.";
+
+      colorView = mkOption {
         type = submodule {
           options = {
-            name = mkOption {
-              type = str;
-              description = "Identifier of the active theme.";
-            };
-
-            cornerRadius = mkOption { type = int; };
-            borderWidth = mkOption { type = int; };
-
-            margin = mkOption { type = int; };
-            padding = mkOption { type = int; };
-
-            font.size.normal = mkOption { type = int; };
-            font.size.big = mkOption { type = int; };
-
-            font.sans.name = mkOption { type = str; };
-            font.sans.package = mkOption { type = package; };
-
-            font.mono.name = mkOption { type = str; };
-            font.mono.package = mkOption { type = package; };
-
-            icons.name = mkOption { type = str; };
-            icons.package = mkOption { type = package; };
-
-            gtk.name = mkOption { type = str; };
-            gtk.package = mkOption { type = package; };
-
-            cursor.name = mkOption { type = str; };
-            cursor.package = mkOption { type = package; };
-            cursor.size = mkOption {
-              type = int;
-              default = 24;
-            };
-
-            wallpaper = mkOption {
-              type = nullOr path;
-              default = null;
-            };
-
-            # SEMANTIC PALETTE
-            # Hex strings (#rrggbb). Surfaces layer base -> surface -> overlay;
-            # text/subtext/muted are foreground tiers; the rest are accents.
-            palette = mkOption {
-              type = submodule {
-                options = {
-                  base = colorOption;
-                  surface = colorOption;
-                  overlay = colorOption;
-                  muted = colorOption;
-
-                  text = colorOption;
-                  subtext = colorOption;
-
-                  accent = colorOption;
-                  accentText = colorOption;
-
-                  red = colorOption;
-                  green = colorOption;
-                  yellow = colorOption;
-                  blue = colorOption;
-                };
-              };
-            };
-
-            # GLASS / BLUR
-            # Drives the Aurora liquid-glass look. Flat themes set enable = false.
-            blur.enable = mkOption {
-              type = bool;
-              default = false;
-            };
-            blur.radius = mkOption {
-              type = int;
-              default = 0;
-            };
-            blur.opacity = mkOption {
-              type = float;
-              default = 1.0;
-            };
+            argb = mkOption { type = str; };
+            bare = mkOption { type = str; };
+            hex = mkOption { type = str; };
+            rgb = mkOption { type = str; };
           };
         };
       };
 
-      # GRUVBOX (default, flat)
-      # Base look; a composed theme module overrides this wholesale.
+      paletteOf = color: submodule { options = genAttrs colorNames (_name: color); };
+    in
+    {
+      options.theme = mkOption {
+        description = "Active theme tokens.";
+        type = submodule (
+          { config, ... }:
+          {
+            options = {
+              name = mkOption {
+                type = strMatching "[a-z0-9-]+";
+                description = "Identifier of the active theme.";
+              };
+
+              # WHICH END OF THE RAMP THE PALETTE SITS AT
+              appearance = mkOption {
+                type = enum [
+                  "dark"
+                  "light"
+                ];
+                default = "dark";
+                description = "Whether the palette is a dark or a light one.";
+              };
+
+              cornerRadius = mkOption { type = unsigned; };
+              borderWidth = mkOption { type = unsigned; };
+
+              margin = mkOption { type = unsigned; };
+              padding = mkOption { type = unsigned; };
+
+              font.size.normal = mkOption { type = unsigned; };
+              font.size.big = mkOption { type = unsigned; };
+
+              font.sans.name = mkOption { type = nonEmptyStr; };
+              font.sans.package = mkOption { type = package; };
+
+              font.mono.name = mkOption { type = nonEmptyStr; };
+              font.mono.package = mkOption { type = package; };
+
+              icons.name = mkOption { type = nonEmptyStr; };
+              icons.package = mkOption { type = package; };
+
+              gtk.name = mkOption { type = nonEmptyStr; };
+              gtk.package = mkOption { type = package; };
+
+              cursor.name = mkOption { type = nonEmptyStr; };
+              cursor.package = mkOption { type = package; };
+              cursor.size = mkOption {
+                type = unsigned;
+                default = 24;
+              };
+
+              wallpaper = mkOption {
+                type = nullOr path;
+                default = null;
+              };
+
+              # SEMANTIC PALETTE
+              palettes.dark = mkOption {
+                type = nullOr (paletteOf colorOption);
+                default = null;
+              };
+              palettes.light = mkOption {
+                type = nullOr (paletteOf colorOption);
+                default = null;
+              };
+
+              palette = mkOption {
+                type = paletteOf colorView;
+                readOnly = true;
+                default =
+                  let
+                    active = config.palettes.${config.appearance};
+                  in
+                  if active == null then
+                    throw "theme \"${config.name}\" has no ${config.appearance} palette: set theme.palettes.${config.appearance}, or point theme.appearance at one it does have"
+                  else
+                    active;
+              };
+
+              # GLASS / BLUR
+              blur.enable = mkOption {
+                type = bool;
+                default = false;
+              };
+              blur.radius = mkOption {
+                type = unsigned;
+                default = 0;
+              };
+              blur.opacity = mkOption {
+                type = addCheck float (opacity: opacity >= 0.0 && opacity <= 1.0);
+                default = 1.0;
+              };
+            };
+          }
+        );
+      };
+
       config.theme = mkDefault {
         name = "gruvbox";
 
@@ -197,7 +225,7 @@
         cursor.name = "Bibata-Modern-Classic";
         cursor.package = pkgs.bibata-cursors;
 
-        palette = {
+        palettes.dark = {
           base = "#1d2021";
           surface = "#3c3836";
           overlay = "#504945";
@@ -213,6 +241,30 @@
           green = "#b8bb26";
           yellow = "#fabd2f";
           blue = "#83a598";
+
+          edgeLight = "#a89984";
+          edgeShade = "#000000";
+        };
+
+        palettes.light = {
+          base = "#f9f5d7";
+          surface = "#fbf1c7";
+          overlay = "#ebdbb2";
+          muted = "#928374";
+
+          text = "#3c3836";
+          subtext = "#504945";
+
+          accent = "#427b58";
+          accentText = "#fbf1c7";
+
+          red = "#9d0006";
+          green = "#79740e";
+          yellow = "#b57614";
+          blue = "#076678";
+
+          edgeLight = "#ffffff";
+          edgeShade = "#7c6f64";
         };
 
         blur.enable = false;

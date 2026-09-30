@@ -1,16 +1,24 @@
 {
   desktopModules.qt =
-    { lib, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
+      inherit (lib.lists) singleton;
       inherit (lib.modules) mkForce;
     in
     {
-      # QT PLATFORM THEME (system half)
-      # Forced at the NixOS level so it lands in /etc/set-environment and wins
-      # everywhere: the DMS module exports gtk3 passthrough system-wide, which
-      # otherwise overrides the hjem-level value for the whole session.
       environment.sessionVariables.QT_QPA_PLATFORMTHEME = mkForce "qt6ct";
       environment.sessionVariables.QT_QPA_PLATFORMTHEME_QT6 = mkForce "qt6ct";
+
+      # QT WINDOW DECORATIONS
+      environment.systemPackages = singleton pkgs.qadwaitadecorations-qt6;
+      environment.sessionVariables.QT_WAYLAND_DECORATION =
+        if config.theme.cornerRadius == 0 then "bradient" else "adwaita";
+      environment.sessionVariables.QT_PLUGIN_PATH = singleton "${pkgs.qadwaitadecorations-qt6}/${pkgs.qt6.qtbase.qtPluginPrefix}";
     };
 
   desktopHomeModules.qt =
@@ -29,10 +37,9 @@
       inherit (osConfig) theme;
       inherit (theme) palette;
 
-      # QPalette::ColorRole enum order (Qt6): WindowText, Button, Light,
-      # Midlight, Dark, Mid, Text, BrightText, ButtonText, Base, Window,
-      # Shadow, Highlight, HighlightedText, Link, LinkVisited, AlternateBase,
-      # NoRole, ToolTipBase, ToolTipText, PlaceholderText, Accent.
+      sunken = if theme.appearance == "dark" then palette.base else palette.muted;
+
+      # Argument order matches Qt6 QPalette::ColorRole.
       mkRow =
         {
           windowText,
@@ -91,14 +98,14 @@
         button = palette.surface;
         light = palette.overlay;
         midlight = palette.surface;
-        dark = palette.base;
-        mid = palette.base;
+        dark = sunken;
+        mid = sunken;
         inherit (palette) text;
         brightText = palette.text;
         buttonText = palette.text;
         base = palette.surface;
-        window = palette.base;
-        shadow = palette.base;
+        window = palette.surface;
+        shadow = sunken;
         highlight = palette.accent;
         highlightedText = palette.accentText;
         link = palette.accent;
@@ -111,21 +118,19 @@
         inherit (palette) accent;
       };
 
-      # Inactive: same backgrounds, foreground dimmed to subtext, selection
-      # neutralized (unfocused windows shouldn't show the live accent color).
       inactive = mkRow {
         windowText = palette.subtext;
         button = palette.surface;
         light = palette.overlay;
         midlight = palette.surface;
-        dark = palette.base;
-        mid = palette.base;
+        dark = sunken;
+        mid = sunken;
         text = palette.subtext;
         brightText = palette.text;
         buttonText = palette.subtext;
         base = palette.surface;
-        window = palette.base;
-        shadow = palette.base;
+        window = palette.surface;
+        shadow = sunken;
         highlight = palette.overlay;
         highlightedText = palette.subtext;
         link = palette.accent;
@@ -144,14 +149,14 @@
         button = palette.surface;
         light = palette.overlay;
         midlight = palette.surface;
-        dark = palette.base;
-        mid = palette.base;
+        dark = sunken;
+        mid = sunken;
         text = palette.muted;
         brightText = palette.text;
         buttonText = palette.muted;
         base = palette.surface;
-        window = palette.base;
-        shadow = palette.base;
+        window = palette.surface;
+        shadow = sunken;
         highlight = palette.overlay;
         highlightedText = palette.muted;
         link = palette.muted;
@@ -165,11 +170,6 @@
       };
     in
     {
-      # QT PLATFORM THEME (home half)
-      # qt6ct lets Qt apps follow our icon theme, widget style, and full
-      # color palette on the non-Plasma stacks (Plasma themes Qt itself, so
-      # a Plasma host omits this adapter). Without the generated color
-      # scheme, Qt apps render in Fusion's generic gray regardless of theme.
       packages = singleton pkgs.kdePackages.qt6ct;
 
       xdg.config.files."qt6ct/qt6ct.conf" = {
@@ -192,9 +192,6 @@
         };
       };
 
-      # DMS's session runtime defaults launched apps to gtk3 passthrough; its
-      # documented override point is environment.d, and 95- sorts after DMS's
-      # own 90-dms.conf so this wins in the systemd user manager too.
       xdg.config.files."environment.d/95-qt6ct.conf" = {
         generator = toKeyValue { };
         value = {

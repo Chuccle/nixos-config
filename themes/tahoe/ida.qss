@@ -1,0 +1,22 @@
+/* IDA'S BUNDLED QT: LIGHT TAHOE PALETTE */
+QWidget { color: #1c1c1e; background-color: #f7f7fa; }
+QMainWindow, QDialog, QToolBar, QMenuBar { background-color: #e9e9ec; }
+QMenu, QToolTip { background-color: #ffffff; border: 1px solid #8e8e93; }
+QLineEdit, QTextEdit, QPlainTextEdit, QAbstractItemView {
+    background-color: #ffffff;
+    selection-background-color: #007aff;
+    selection-color: #ffffff;
+}
+QPushButton, QToolButton, QComboBox {
+    background-color: #f7f7fa;
+    border: 1px solid #8e8e93;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+QPushButton:default, QPushButton:pressed, QToolButton:checked {
+    background-color: #007aff;
+    color: #ffffff;
+}
+QMenu::item:selected { background-color: #007aff; color: #ffffff; }
+QHeaderView::section { background-color: #e9e9ec; padding: 4px; }
+QWidget:disabled { color: #8e8e93; }

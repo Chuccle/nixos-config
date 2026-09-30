@@ -17,7 +17,7 @@
   flake.homeModules.git =
     { pkgs, ... }:
     {
-      # rum.programs.git (same as zoxide.mod.nix/foot.mod.nix) generates the
+      # rum.programs.git (same as zoxide.mod.nix/ghostty.mod.nix) generates the
       # ini via pkgs.formats.gitIni and installs the package. Explicit
       # `gitMinimal` keeps the smaller closure the hand-rolled version used —
       # rum's own default package is the full `pkgs.git`.

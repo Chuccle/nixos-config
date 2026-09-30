@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#a49b8f"/>
+      <stop offset="0.5" stop-color="#ddd8cf"/>
+      <stop offset="1" stop-color="#f3f0eb"/>
+    </linearGradient>
+    <linearGradient id="shadow" x1="0" y1="0" x2="0.7" y2="1">
+      <stop stop-color="#433f3a"/>
+      <stop offset="0.6" stop-color="#71695e"/>
+      <stop offset="1" stop-color="#b3a798"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="0" y1="0" x2="0.3" y2="1">
+      <stop stop-color="#f8f6f0"/>
+      <stop offset="0.42" stop-color="#ded9cf"/>
+      <stop offset="0.8" stop-color="#9d9385"/>
+      <stop offset="1" stop-color="#655e54"/>
+    </linearGradient>
+    <linearGradient id="foreground" x1="0" y1="0" x2="0.8" y2="1">
+      <stop stop-color="#eeeae2"/>
+      <stop offset="0.55" stop-color="#bcb4a7"/>
+      <stop offset="1" stop-color="#82796d"/>
+    </linearGradient>
+    <filter id="edge" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+  <rect width="3840" height="2160" fill="url(#ground)"/>
+  <path d="M 0 0 H 3840 C 3710 670 2300 770 1410 1160 C 690 1480 170 1670 0 2160 Z" fill="url(#shadow)"/>
+  <path d="M -80 1610 C 520 750 1400 1060 2460 590 C 3160 280 3620 370 3890 -80 L 3890 470 C 3560 960 2300 1020 1490 1370 C 650 1730 220 1800 -80 2240 Z" fill="url(#fold)"/>
+  <path d="M -80 1610 C 520 750 1400 1060 2460 590 C 3160 280 3620 370 3890 -80" fill="none" stroke="#fffdf7" stroke-opacity="0.72" stroke-width="9" filter="url(#edge)"/>
+  <path d="M 0 2160 C 430 1410 1240 1690 2160 1280 C 2970 920 3570 1060 3840 660 V 2160 Z" fill="url(#foreground)"/>
+  <path d="M 0 2160 C 430 1410 1240 1690 2160 1280 C 2970 920 3570 1060 3840 660" fill="none" stroke="#faf7ef" stroke-opacity="0.8" stroke-width="7" filter="url(#edge)"/>
+</svg>

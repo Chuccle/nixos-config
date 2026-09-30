@@ -1,12 +1,8 @@
-// The taskbar itself.
-//
-// Left to right: Start, a sunken divider, Quick Launch, the window list,
-// then the notification area and clock pinned right — the genuine Win95
-// layout rather than a modern bar wearing grey.
 pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import "Tokens.js" as Tokens
 
@@ -14,6 +10,24 @@ PanelWindow {
     id: root
 
     property bool menuOpen: false
+    required property WindowBackend backend
+    WlrLayershell.keyboardFocus: root.menuOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+    IpcHandler {
+        target: "win95-" + root.screen.name
+        function state(): string {
+            return JSON.stringify({
+                menuOpen: root.menuOpen,
+                confirmationVisible: startMenu.confirmationVisible,
+                entries: startMenu.entries.map(entry => ({id: entry.id, name: entry.name})),
+                taskbarHeight: root.height,
+                buttons: root.backend.windows.map((window, index) => {
+                    const item = windowList.itemAtIndex(index);
+                    return {id: window.id, x: item ? windowList.x + item.x + item.width / 2 : null};
+                })
+            });
+        }
+    }
 
     anchors {
         bottom: true
@@ -30,8 +44,6 @@ PanelWindow {
     }
 
     // START
-    // Sunken while the menu is open, which is how the original showed the
-    // button as held down.
     Bevel {
         id: startButton
 
@@ -70,7 +82,7 @@ PanelWindow {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Start"
+                text: Tokens.startLabel
                 font.family: Tokens.fontFamily
                 font.pixelSize: Tokens.fontSize
                 font.bold: true
@@ -100,9 +112,6 @@ PanelWindow {
     }
 
     // QUICK LAUNCH
-    // Icon-only launchers for the handful of things worth one click. Entries
-    // that are not installed resolve to null and are skipped, so the row
-    // never shows a broken button.
     Row {
         id: quickLaunch
 
@@ -116,8 +125,8 @@ PanelWindow {
         Repeater {
             model: ScriptModel {
                 values: Tokens.quickLaunch
-                    .map(id => DesktopEntries.byId(id))
-                    .filter(entry => entry !== null)
+                    .map(id => DesktopEntries.applications.values.find(entry => entry.id === id))
+                    .filter(entry => entry !== undefined)
             }
 
             delegate: QuickLaunchButton {
@@ -145,10 +154,8 @@ PanelWindow {
     }
 
     // WINDOW LIST
-    // The open toplevels, via wlr-foreign-toplevel-management. This is the
-    // taskbar's actual job, so it takes all the space Start and the tray
-    // leave behind.
     ListView {
+        id: windowList
         orientation: ListView.Horizontal
         clip: true
         spacing: Tokens.padding
@@ -164,13 +171,16 @@ PanelWindow {
             bottomMargin: Tokens.padding
         }
 
-        model: ToplevelManager.toplevels
+        model: root.backend.windows
 
         delegate: TaskButton {
-            required property Toplevel modelData
+            required property var modelData
 
             window: modelData
-            width: Math.min(200, ListView.view.width / Math.max(1, ListView.view.count))
+            backend: root.backend
+            width: Math.min(Tokens.taskButtonWidth,
+                Math.max(0, ListView.view.width - ListView.view.spacing * Math.max(0, ListView.view.count - 1))
+                    / Math.max(1, ListView.view.count))
             height: ListView.view.height
         }
     }
@@ -196,10 +206,12 @@ PanelWindow {
     }
 
     StartMenu {
+        id: startMenu
         anchor.window: root
         anchor.rect.x: Tokens.padding
         anchor.rect.y: -height
         visible: root.menuOpen
         onDismissed: root.menuOpen = false
+        onShowDesktopRequested: root.backend.send("show-desktop")
     }
 }

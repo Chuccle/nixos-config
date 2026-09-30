@@ -50,20 +50,10 @@ let
     web-archives.id = "hkligngkgcpcolhcnkgccglchdafcnao";
   };
 
-  # The extension-forcelist shape ("id;update-url") is exactly what
-  # nixpkgs' `programs.chromium.extensions` documents, so it's the one
-  # policy field pulled out separately rather than left in `extraPolicy`.
   extensionForcelist =
     extensions |> mapAttrsToList (_name: { id, ... }: "${id};https://services.helium.imput.net/ext");
 
   # EXTRA POLICY
-  # Everything `programs.chromium` (nixos/modules/programs/chromium.nix)
-  # doesn't give a typed field for — it only types extensions-forcelist and
-  # the default-search-provider trio, and deliberately hands the rest of the
-  # Chrome Enterprise policy surface to `extraOpts` as its own escape hatch,
-  # since nixpkgs itself can't give a closed schema to arbitrary per-vendor
-  # policies (there's no way it could enumerate every extension's own
-  # "3rdparty" override shape, for instance).
   extraPolicy = {
     ExtensionInstallAllowlist = extensions |> mapAttrsToList (_name: { id, ... }: id);
     ExtensionInstallSources = singleton "https://services.helium.imput.net/*";
@@ -71,10 +61,6 @@ let
     # UBLOCK ORIGIN
     "3rdparty".extensions.${extensions.ublock-origin.id}.toOverwrite.filterLists =
       extensions.ublock-origin.filters.wanted;
-
-    # # Setting the policy to False stops Chrome from ever checking if
-    # # it's the default and turns user controls off for this option.
-    # DefaultBrowserSettingEnabled = true;
 
     # SEARCH
     DefaultSearchProviderName = "Kagi";
@@ -85,9 +71,6 @@ in
   flake.nixosModules.helium = _: {
     inherit (extensions.ublock-origin.filters) warnings;
 
-    # `programs.chromium` is nixpkgs' own module (nixos/modules/programs/
-    # chromium.nix) — already part of every `nixosSystem`'s base module
-    # list, no explicit import needed.
     programs.chromium = {
       enable = true;
       extensions = extensionForcelist;
@@ -101,34 +84,81 @@ in
   };
 
   flake.homeModules.helium =
-    { lib, osConfig, ... }:
+    {
+      config,
+      lib,
+      osConfig,
+      pkgs,
+      ...
+    }:
     let
       inherit (lib.attrsets) genAttrs;
       inherit (lib.lists) singleton;
+      inherit (lib.meta) getExe';
+      inherit (lib.options) mkOption;
+      inherit (lib.strings) escapeShellArgs;
       inherit (lib.trivial) const flip;
+      inherit (lib.types) listOf str;
+
+      browser = inputs.helium.packages.${osConfig.nixpkgs.hostPlatform.system}.default;
+      launcher = pkgs.writeShellScriptBin "helium" /* bash */ ''
+        exec ${getExe' browser "helium"} ${escapeShellArgs config.helium.commandLineArgs} "$@"
+      '';
+      desktopItem = pkgs.makeDesktopItem {
+        name = "helium";
+        desktopName = "Helium";
+        genericName = "Web Browser";
+        exec = "${getExe' launcher "helium"} %U";
+        icon = "helium";
+        categories = [
+          "Network"
+          "WebBrowser"
+        ];
+        startupWMClass = "helium";
+      };
     in
     {
-      inherit (extensions.ublock-origin.filters) warnings;
+      options.helium.commandLineArgs = mkOption {
+        type = listOf str;
+        default = [ ];
+        description = "Extra arguments for the packaged Helium launcher.";
+      };
 
-      environment.sessionVariables.BROWSER = "helium";
+      config = {
+        inherit (extensions.ublock-origin.filters) warnings;
 
-      xdg.mime-apps.default-applications = flip genAttrs (const "helium.desktop") [
-        "application/pdf"
-        "application/rdf+xml"
-        "application/rss+xml"
-        "application/xhtml+xml"
-        "application/xhtml_xml"
-        "application/xml"
-        "image/gif"
-        "image/jpeg"
-        "image/png"
-        "image/webp"
-        "text/html"
-        "text/xml"
-        "x-scheme-handler/http"
-        "x-scheme-handler/https"
-      ];
+        environment.sessionVariables.BROWSER = "helium";
 
-      packages = singleton inputs.helium.packages.${osConfig.nixpkgs.hostPlatform.system}.default;
+        packages = singleton (
+          if config.helium.commandLineArgs == [ ] then
+            browser
+          else
+            pkgs.symlinkJoin {
+              name = "helium-session";
+              paths = [
+                launcher
+                desktopItem
+                browser
+              ];
+            }
+        );
+
+        xdg.mime-apps.default-applications = flip genAttrs (const "helium.desktop") [
+          "application/pdf"
+          "application/rdf+xml"
+          "application/rss+xml"
+          "application/xhtml+xml"
+          "application/xhtml_xml"
+          "application/xml"
+          "image/gif"
+          "image/jpeg"
+          "image/png"
+          "image/webp"
+          "text/html"
+          "text/xml"
+          "x-scheme-handler/http"
+          "x-scheme-handler/https"
+        ];
+      };
     };
 }

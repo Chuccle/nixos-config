@@ -1,10 +1,5 @@
-// One window button in the taskbar.
-//
-// Sunken while its window is focused, raised otherwise — the Win95 way of
-// showing which window is active. Icon comes from a heuristic lookup on the
-// app id, so windows whose .desktop file cannot be resolved still get a
-// button, just without a picture.
 import QtQuick
+import QtQuick.Controls as Controls
 import Quickshell
 import Quickshell.Widgets
 import Quickshell.Wayland
@@ -13,11 +8,12 @@ import "Tokens.js" as Tokens
 Bevel {
     id: root
 
-    required property Toplevel window
+    required property var window
+    required property WindowBackend backend
 
-    readonly property DesktopEntry entry: DesktopEntries.heuristicLookup(root.window.appId)
+    readonly property DesktopEntry entry: DesktopEntries.heuristicLookup(root.window.app_id || "")
 
-    raised: !root.window.activated
+    raised: !root.window.is_focused
 
     Row {
         anchors {
@@ -40,30 +36,39 @@ Bevel {
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - (root.entry ? Tokens.fontSize + Tokens.padding : 0)
 
-            text: root.window.title
+            text: root.window.title || root.window.app_id || "Application"
             elide: Text.ElideRight
             font.family: Tokens.fontFamily
             font.pixelSize: Tokens.fontSize
-            font.bold: root.window.activated
+            font.bold: root.window.is_focused
             color: Tokens.text
         }
     }
 
     MouseArea {
         anchors.fill: parent
-        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
 
-        // Clicking the focused window's button minimises it, same as the
-        // original. Middle click closes, which the original lacked but every
-        // taskbar since has had.
         onClicked: event => {
             if (event.button === Qt.MiddleButton) {
-                root.window.close();
-            } else if (root.window.activated) {
-                root.window.minimized = true;
+                root.backend.send("close", root.window.id);
+            } else if (event.button === Qt.RightButton) {
+                actions.popup();
             } else {
-                root.window.activate();
+                root.backend.send("toggle", root.window.id);
             }
         }
+    }
+    Controls.Menu {
+        id: actions
+        font.family: Tokens.fontFamily
+        palette.window: Tokens.surface
+        palette.text: Tokens.text
+        palette.highlight: Tokens.accent
+        palette.highlightedText: Tokens.accentText
+        Controls.MenuItem { text: "Restore"; onTriggered: root.backend.send("restore", root.window.id) }
+        Controls.MenuItem { text: "Minimize"; onTriggered: root.backend.send("hide", root.window.id) }
+        Controls.MenuItem { text: "Maximize"; onTriggered: root.backend.send("maximize", root.window.id) }
+        Controls.MenuItem { text: "Close"; onTriggered: root.backend.send("close", root.window.id) }
     }
 }

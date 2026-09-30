@@ -1,23 +1,35 @@
 {
   desktopModules.niri =
-    { lib, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
+      inherit (lib.attrsets) mapAttrsRecursive;
       inherit (lib.meta) getExe';
       inherit (lib.modules) mkDefault;
       inherit (lib.options) mkOption;
       inherit (lib.types)
+        addCheck
+        bool
+        enum
         float
         int
+        listOf
         str
+        strMatching
         submodule
         ;
+
+      inherit (config) theme;
+
+      # PER-LEAF DEFAULTS
+      defaults = mapAttrsRecursive (_path: mkDefault);
     in
     {
       # NIRI GLASS
-      # Style knobs for the glass look that are DE-specific — niri's own blur
-      # and shadow parameters, not `theme.*` fields every adapter reads — but
-      # still host-overridable token declarations rather than literals baked
-      # into the home module. Same shape as `dmsBar` in shells/dms.mod.nix.
       options.niriShadow = mkOption {
         description = "niri glass-mode window shadow tokens.";
         type = submodule {
@@ -26,18 +38,13 @@
             spread = mkOption { type = int; };
             offsetX = mkOption { type = int; };
             offsetY = mkOption { type = int; };
-            # Hex alpha byte (00-ff) appended to `theme.palette.base.hex`, not a
-            # 0-1 float, so it can be spliced directly into the KDL color
-            # string without a float->hex conversion helper.
             opacityHex = mkOption { type = str; };
+
+            inactiveOpacityHex = mkOption { type = str; };
           };
         };
       };
 
-      # niri's blur is parameterised by passes and sample offset rather than a
-      # single radius, so `theme.blur.radius` (which Plasma's BlurStrength maps
-      # onto directly) has no meaningful translation here. These are declared
-      # separately rather than derived from it by an invented formula.
       options.niriBlur = mkOption {
         description = "niri glass-mode background blur tokens.";
         type = submodule {
@@ -50,59 +57,146 @@
         };
       };
 
-      # How much of every animation duration to keep. Below 1.0 is faster than
-      # niri's default; this is the single knob that decides whether the
-      # session feels immediate or floaty.
+      # WINDOW MODEL
+      options.niriWindows = mkOption {
+        description = "niri window-model tokens.";
+        type = submodule {
+          options = {
+            floating = mkOption { type = bool; };
+
+            clientDecorations = mkOption { type = bool; };
+          };
+        };
+      };
+
+      # SESSION INTEGRATION
+      options.niriSession = mkOption {
+        description = "niri shell, workspaces, and edition shortcuts.";
+        type = submodule {
+          options = {
+            shell = mkOption {
+              type = enum [
+                "none"
+                "dms"
+                "win95"
+              ];
+              default = "none";
+            };
+            workspaces = mkOption {
+              type = listOf (strMatching "[a-z][a-z0-9-]*");
+              default = [ ];
+            };
+            shortcuts = mkOption {
+              type = listOf (submodule {
+                options = {
+                  key = mkOption { type = strMatching "(Alt|Mod)(\\+[A-Za-z0-9]+)+"; };
+                  action = mkOption {
+                    type = enum [
+                      "close-window"
+                      "focus-window-previous"
+                      "maximize-window-to-edges"
+                      "spawn"
+                    ];
+                  };
+                  command = mkOption {
+                    type = listOf str;
+                    default = [ ];
+                  };
+                };
+              });
+              default = [ ];
+            };
+          };
+        };
+        default = { };
+      };
+
       options.niriAnimationSlowdown = mkOption {
         type = float;
         description = "Multiplier applied to every niri animation duration.";
       };
 
+      options.niriMouse = mkOption {
+        description = "Mouse acceleration and overview hot corners.";
+        type = submodule {
+          options = {
+            accelProfile = mkOption {
+              type = enum [
+                "adaptive"
+                "flat"
+              ];
+              default = "flat";
+            };
+            accelSpeed = mkOption {
+              type = addCheck float (value: value >= -1.0 && value <= 1.0);
+              default = 0.0;
+            };
+            hotCorners = mkOption {
+              type = bool;
+              default = false;
+            };
+          };
+        };
+        default = { };
+      };
+
       config = {
         programs.niri.enable = true;
 
-        # niri spawns xwayland-satellite from PATH for X11 apps; without it,
-        # Xwayland integration is silently disabled.
         environment.systemPackages = [ pkgs.xwayland-satellite ];
 
-        # `niri-session` (not `niri --session`) runs niri as a systemd user
-        # service, which activates graphical-session.target — the target the
-        # DMS user service and portals bind to. Launching the bare binary
-        # leaves that target inactive and the session empty.
         desktop.sessionCommand = getExe' pkgs.niri "niri-session";
 
-        niriShadow = mkDefault {
+        niriShadow = defaults {
           softness = 40;
           spread = 4;
           offsetX = 0;
           offsetY = 8;
           opacityHex = "b3";
+          inactiveOpacityHex = "59";
         };
 
-        # Three passes at a wide offset is the depth Tahoe's glass reads at;
-        # the slight desaturation lift keeps colour behind the glass from
-        # going flat, and a trace of noise stops wide blur from banding on a
-        # gradient wallpaper.
-        niriBlur = mkDefault {
+        niriBlur = defaults {
           passes = 3;
           offset = 5.0;
-          noise = 0.04;
+          noise = 0.0;
           saturation = 1.4;
         };
+
+        niriWindows = defaults {
+          floating = false;
+          clientDecorations = theme.blur.enable;
+        };
+
+        niriSession = { };
 
         niriAnimationSlowdown = mkDefault 0.6;
       };
     };
 
   desktopHomeModules.niri =
-    { lib, osConfig, ... }:
+    {
+      lib,
+      osConfig,
+      pkgs,
+      ...
+    }:
     let
-      inherit (lib.lists) concatMap optionals singleton;
+      inherit (lib.lists)
+        concatMap
+        optional
+        optionals
+        singleton
+        ;
+      inherit (lib.meta) getExe';
 
       inherit (osConfig)
         niriAnimationSlowdown
         niriBlur
+        niriMouse
+        niriSession
         niriShadow
+        niriWindows
         theme
         ;
       inherit (theme) palette;
@@ -113,15 +207,9 @@
       glass = theme.blur.enable;
 
       # NODE HELPERS
-      # Thin sugar over the generic node shape so the document below reads as
-      # configuration rather than as data-structure construction.
       leaf = name: args: { inherit name args; };
       block = name: children: { inherit name children; };
 
-      # A keybind is a node named for the chord, holding one action node. Mod
-      # is Super, which host desktops swallow before it reaches a VM guest
-      # window, so every binding is published on Alt as well — generated from
-      # one list rather than the two hand-kept copies this used to be.
       bind =
         chord: action:
         map (modifier: block "${modifier}+${chord}" (singleton action)) [
@@ -140,6 +228,14 @@
         "toggle"
       ];
 
+      dmsThemeToggle = spawn [
+        "dms"
+        "ipc"
+        "call"
+        "theme"
+        "toggle"
+      ];
+
       workspaceBinds =
         concatMap
           (index: singleton (block "Mod+${toString index}" (singleton (leaf "focus-workspace" [ index ]))))
@@ -151,9 +247,6 @@
           ];
 
       # DMS INTEGRATION
-      # DMS generates these snippets and manages them from its settings UI
-      # (cursor, alt-tab, live colors, wallpaper blur). Included last so they
-      # win over the token defaults above; optional so missing ones are fine.
       dmsIncludes =
         map (name: leaf "include" [ "~/.config/niri/dms/${name}.kdl" ] // { props.optional = true; })
           [
@@ -168,11 +261,20 @@
           ];
 
       document = [
+        (block "hotkey-overlay" [ (call "skip-at-startup") ])
         (block "input" [
+          (block "mouse" [
+            (leaf "accel-profile" [ niriMouse.accelProfile ])
+            (leaf "accel-speed" [ niriMouse.accelSpeed ])
+          ])
           (block "touchpad" [
             (call "tap")
             (call "natural-scroll")
           ])
+        ])
+
+        (block "gestures" [
+          (block "hot-corners" (optional (!niriMouse.hotCorners) (call "off")))
         ])
 
         (block "layout" (
@@ -180,7 +282,8 @@
             (leaf "gaps" [ theme.padding ])
             (leaf "center-focused-column" [ "never" ])
             (leaf "background-color" [ palette.base.hex ])
-
+          ]
+          ++ optionals (!glass) [
             (block "border" [
               (leaf "width" [ theme.borderWidth ])
               (leaf "active-color" [ palette.accent.hex ])
@@ -194,6 +297,13 @@
             ])
           ]
           ++ optionals glass [
+            {
+              name = "border";
+              children = singleton (call "off");
+            }
+
+            (block "focus-ring" (singleton (call "off")))
+
             (block "shadow" [
               (call "on")
               (leaf "softness" [ niriShadow.softness ])
@@ -205,28 +315,37 @@
                   y = niriShadow.offsetY;
                 };
               }
-              (leaf "color" [ "${palette.base.hex}${niriShadow.opacityHex}" ])
+              (leaf "color" [ "${palette.edgeShade.hex}${niriShadow.opacityHex}" ])
+              (leaf "inactive-color" [ "${palette.edgeShade.hex}${niriShadow.inactiveOpacityHex}" ])
             ])
           ]
         ))
 
-        (call "prefer-no-csd")
-
         {
           name = "animations";
-          comment = ''
-            Every animation duration scaled by one token. Nothing is switched
-            off — motion still shows where a window went — it just resolves
-            faster than niri's default.'';
           children = singleton (leaf "slowdown" [ niriAnimationSlowdown ]);
+        }
+      ]
+      ++ optionals (!niriWindows.clientDecorations) [
+        (call "prefer-no-csd")
+      ]
+      ++ map (name: leaf "workspace" [ name ]) niriSession.workspaces
+      ++ optionals (niriSession.shell == "dms") [
+        {
+          name = "window-rule";
+          comment = "Give Ark's archive headings and information panel room at 720p.";
+          children = [
+            {
+              name = "match";
+              props."app-id" = "^org\\.kde\\.ark$";
+            }
+            (block "default-column-width" (singleton (leaf "fixed" [ 900 ])))
+          ];
         }
       ]
       ++ optionals glass [
         {
           name = "blur";
-          comment = ''
-            The global blur parameters. Without this node niri blurs at its own
-            defaults and every depth token goes unread.'';
           children = [
             (leaf "passes" [ niriBlur.passes ])
             (leaf "offset" [ niriBlur.offset ])
@@ -237,10 +356,13 @@
 
         {
           name = "overview";
-          comment = ''
-            So zooming out lands on the theme's own base colour rather than
-            niri's default grey.'';
           children = singleton (leaf "backdrop-color" [ palette.base.hex ]);
+        }
+      ]
+      ++ optionals niriWindows.floating [
+        {
+          name = "window-rule";
+          children = singleton (leaf "open-floating" [ true ]);
         }
       ]
       ++ [
@@ -251,34 +373,23 @@
           ]
           ++ optionals glass [
             {
-              name = "opacity";
-              args = singleton theme.blur.opacity;
-              comment = ''
-                Windows have to be translucent for blur behind them to be
-                visible at all; blur.opacity is what every other surface in
-                the stack already tracks.'';
+              name = "background-effect";
+              children = [
+                (leaf "xray" [ true ])
+                (leaf "blur" [ true ])
+              ];
             }
-            (block "background-effect" [
-              (leaf "xray" [ true ])
-              (leaf "blur" [ true ])
-            ])
           ]
         ))
       ]
       ++ optionals glass [
         {
           name = "window-rule";
-          comment = ''
-            Media opts back out of the glass: translucency over a moving
-            picture reads as a rendering fault, and there is nothing
-            meaningful behind a player worth blurring. niri 26.04 has no
-            is-fullscreen match property, so this keys on app id.'';
           children = [
             {
               name = "match";
               props."app-id" = "^(mpv|org\\.kde\\.haruna|helium)$";
             }
-            (leaf "opacity" [ 1.0 ])
             (block "background-effect" [
               (leaf "blur" [ false ])
               (leaf "xray" [ false ])
@@ -288,28 +399,37 @@
       ]
       ++ [
         (block "binds" (
-          bind "Return" (spawn [ "foot" ])
-          ++ bind "D" dmsSpotlight
+          bind "Return" (spawn [ (getExe' pkgs.ghostty "ghostty") ])
+          ++ optionals (niriSession.shell == "dms") (bind "D" dmsSpotlight)
           ++ bind "Q" (call "close-window")
           ++ bind "Left" (call "focus-column-left")
           ++ bind "Right" (call "focus-column-right")
           ++ bind "Up" (call "focus-window-up")
           ++ bind "Down" (call "focus-window-down")
           ++ workspaceBinds
+          ++ map (
+            {
+              action,
+              command,
+              key,
+            }:
+            block key (singleton (if action == "spawn" then spawn command else call action))
+          ) niriSession.shortcuts
+          ++ bind "V" (call "toggle-window-floating")
+          ++ optionals (niriSession.shell == "dms") [
+            (block "Mod+Shift+T" (singleton dmsThemeToggle))
+          ]
           ++ [
+            (block "Mod+Shift+V" (singleton (call "switch-focus-between-floating-and-tiling")))
             (block "Mod+Shift+E" (singleton (call "quit")))
             (block "Print" (singleton (call "screenshot")))
           ]
         ))
       ]
-      ++ dmsIncludes;
+      ++ optionals (niriSession.shell == "dms") dmsIncludes;
     in
     {
       # NIRI CONFIG
-      # Scrollable-tiling compositor for the Tahoe stack. The whole config is
-      # a Nix value rendered by lib/kdl.nix — there is no KDL text in the repo
-      # to drift out of sync with the tokens. Routed through rum.desktops.niri
-      # so the rendered config.kdl still gets `niri validate -c` at build time.
       rum.desktops.niri.enable = true;
       rum.desktops.niri.config = toKDL document;
     };
