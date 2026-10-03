@@ -1,82 +1,62 @@
-# This is the NixOS configuration for the "box" host.
-# It includes all the necessary modules and settings to run a desktop environment with NetworkManager and a user named "box".
-# This configuration is designed to be modular
+{ inputs, self, ... }:
 {
-  config,
-  inputs,
-  lib,
-  self,
-  ...
-}:
-let
-  inherit (lib.attrsets) attrValues removeAttrs;
-  inherit (lib.lists) singleton;
-  inherit (lib.trivial) flip;
+  flake.nixosConfigurations.box = inputs.nixpkgs.lib.nixosSystem {
+    modules = [
+      self.nixosModules.bitwarden
+      self.nixosModules.boot
+      self.nixosModules.cachy
+      self.nixosModules.documentation
+      self.nixosModules.fonts
+      self.nixosModules.helium
+      self.nixosModules.home
+      self.nixosModules.networkmanager
+      self.nixosModules.nh
+      self.nixosModules.nix
+      self.nixosModules.nuke-default-packages
+      self.nixosModules.packages-debugging
+      self.nixosModules.security
+      self.nixosModules.shell
+      self.nixosModules.steam
+      self.nixosModules.unfree
 
-  # Desktop registries are internal flake-parts options (not flake outputs), so
-  # they are read from `config`, not `self`.
-  inherit (config) desktopModules desktopHomeModules;
-
-  # DESKTOP STACK
-  # Tahoe = niri + DankMaterialShell, themed tahoe, with shared GTK/Qt/cursor
-  # adapters. Composed explicitly from the pure desktop modules — nothing
-  # self-gates, and swapping the stack is editing these two lists.
-  desktopSystem = [
-    desktopModules.niri
-    desktopModules.dms
-    desktopModules.login
-    desktopModules.qt
-    desktopModules.theme-tahoe
-  ];
-
-  desktopHome = [
-    desktopHomeModules.niri
-    desktopHomeModules.dms
-    desktopHomeModules.gtk
-    desktopHomeModules.qt
-    desktopHomeModules.cursor-icons
-  ];
-
-  # fonts-disable kills fontconfig for headless hosts; on a desktop it leaves
-  # every GUI toolkit fontless, so exclude it alongside the server-only service.
-  modules =
-    (
-      self.nixosModules
-      |> flip removeAttrs [
-        "peergos-service"
-        "fonts-disable"
-      ]
-      |> attrValues
-    )
-    ++ desktopSystem
-    ++ singleton {
-      home.extraModules = attrValues self.homeModules ++ desktopHome;
-    }
-    ++ singleton (
-      { pkgs, ... }:
       {
+        home.extraModules = [
+          self.homeModules.bitwarden
+          self.homeModules.btop
+          self.homeModules.difftastic
+          self.homeModules.file-explorer
+          self.homeModules.foot
+          self.homeModules.gh
+          self.homeModules.git
+          self.homeModules.haruna
+          self.homeModules.helium
+          self.homeModules.helix
+          self.homeModules.helix-desktop
+          self.homeModules.home
+          self.homeModules.jujutsu
+          self.homeModules.nushell
+          self.homeModules.packages-debugging
+          self.homeModules.packages-dev-tools-cc
+          self.homeModules.packages-dev-tools-go
+          self.homeModules.packages-dev-tools-python
+          self.homeModules.packages-dev-tools-rust
+          self.homeModules.packages-media
+          self.homeModules.packages-shell-utils
+          self.homeModules.packages-wisdom
+          self.homeModules.use-xdg-dirs
+          self.homeModules.zoxide
+        ];
+
         networking.hostName = "box";
 
         users.users.box = {
           name = "box";
           isNormalUser = true;
         };
-        home.users.box = {
-          ida-pro.package = self.packages.${pkgs.stdenv.hostPlatform.system}.ida-pro;
-        };
+        home.users.box = { };
 
-        # DEFAULT SHELL
         shell.default = "nushell";
 
-        # DESKTOP
-        # Autologin into the box user; the session command is published by the
-        # composed compositor (niri).
-        desktop.autoLoginUser = "box";
-
-        # FIRMWARE
-        # No generated hardware profile is imported, so opt into redistributable
-        # firmware explicitly — without it amdgpu/newer GPUs never initialize
-        # and the session falls back to simpledrm + software rendering.
         hardware.enableRedistributableFirmware = true;
 
         fileSystems."/" = {
@@ -92,10 +72,6 @@ let
         nixpkgs.hostPlatform = "x86_64-linux";
         system.stateVersion = "25.11";
       }
-    );
-in
-{
-  flake.nixosConfigurations.box = inputs.nixpkgs.lib.nixosSystem {
-    inherit modules;
+    ];
   };
 }

@@ -15,7 +15,6 @@
         programs = {
           nixfmt.enable = true;
           deadnix.enable = true;
-          black.enable = true;
           prettier = {
             enable = true;
             package = pkgs.prettier;
@@ -26,9 +25,18 @@
               "*.md"
             ];
           };
-          statix.enable = true;
+          statix = {
+            enable = true;
+            disabled-lints = singleton "repeated_keys";
+          };
         };
       });
+
+      statixConfig = pkgs.linkFarm "statix-config" {
+        "statix.toml" = (pkgs.formats.toml { }).generate "statix.toml" {
+          disabled = treefmt.config.programs.statix.disabled-lints;
+        };
+      };
 
       hostChecks =
         self.nixosConfigurations
@@ -66,7 +74,7 @@
             name = "statix-check";
             src = self;
             nativeBuildInputs = singleton statix;
-            buildPhase = "statix check .";
+            buildPhase = "statix check --config ${statixConfig}/statix.toml .";
             installPhase = "touch $out";
           }
         ) { };

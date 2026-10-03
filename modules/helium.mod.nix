@@ -41,7 +41,6 @@ let
 
       filters.warnings =
         self.filters.wanted
-        # Not external and not in internal list.
         |> filter (name: !(hasInfix "://" name || elem name self.filters.internal))
         |> map (invalid: "helium: unknown ublock filter list: ${invalid}");
     });
@@ -50,20 +49,10 @@ let
     web-archives.id = "hkligngkgcpcolhcnkgccglchdafcnao";
   };
 
-  # The extension-forcelist shape ("id;update-url") is exactly what
-  # nixpkgs' `programs.chromium.extensions` documents, so it's the one
-  # policy field pulled out separately rather than left in `extraPolicy`.
   extensionForcelist =
     extensions |> mapAttrsToList (_name: { id, ... }: "${id};https://services.helium.imput.net/ext");
 
   # EXTRA POLICY
-  # Everything `programs.chromium` (nixos/modules/programs/chromium.nix)
-  # doesn't give a typed field for — it only types extensions-forcelist and
-  # the default-search-provider trio, and deliberately hands the rest of the
-  # Chrome Enterprise policy surface to `extraOpts` as its own escape hatch,
-  # since nixpkgs itself can't give a closed schema to arbitrary per-vendor
-  # policies (there's no way it could enumerate every extension's own
-  # "3rdparty" override shape, for instance).
   extraPolicy = {
     ExtensionInstallAllowlist = extensions |> mapAttrsToList (_name: { id, ... }: id);
     ExtensionInstallSources = singleton "https://services.helium.imput.net/*";
@@ -71,10 +60,6 @@ let
     # UBLOCK ORIGIN
     "3rdparty".extensions.${extensions.ublock-origin.id}.toOverwrite.filterLists =
       extensions.ublock-origin.filters.wanted;
-
-    # # Setting the policy to False stops Chrome from ever checking if
-    # # it's the default and turns user controls off for this option.
-    # DefaultBrowserSettingEnabled = true;
 
     # SEARCH
     DefaultSearchProviderName = "Kagi";
@@ -85,9 +70,6 @@ in
   flake.nixosModules.helium = _: {
     inherit (extensions.ublock-origin.filters) warnings;
 
-    # `programs.chromium` is nixpkgs' own module (nixos/modules/programs/
-    # chromium.nix) — already part of every `nixosSystem`'s base module
-    # list, no explicit import needed.
     programs.chromium = {
       enable = true;
       extensions = extensionForcelist;
@@ -108,8 +90,6 @@ in
       inherit (lib.trivial) const flip;
     in
     {
-      inherit (extensions.ublock-origin.filters) warnings;
-
       environment.sessionVariables.BROWSER = "helium";
 
       xdg.mime-apps.default-applications = flip genAttrs (const "helium.desktop") [

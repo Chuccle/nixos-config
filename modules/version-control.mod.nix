@@ -17,10 +17,6 @@
   flake.homeModules.git =
     { pkgs, ... }:
     {
-      # rum.programs.git (same as zoxide.mod.nix/foot.mod.nix) generates the
-      # ini via pkgs.formats.gitIni and installs the package. Explicit
-      # `gitMinimal` keeps the smaller closure the hand-rolled version used —
-      # rum's own default package is the full `pkgs.git`.
       programs.git = {
         enable = true;
         package = pkgs.gitMinimal;
@@ -33,6 +29,8 @@
           receive.fsckObjects = true;
           transfer.fsckobjects = true;
         };
+
+        integrations.difftastic.enable = true;
       };
     };
 
@@ -132,6 +130,13 @@
         '';
 
         ui.diff-editor = ":builtin";
+        ui.diff-formatter = [
+          (getExe pkgs.difftastic)
+          "--color"
+          "always"
+          "$left"
+          "$right"
+        ];
         ui.pager = [
           (getExe pkgs.bash)
           "-c"

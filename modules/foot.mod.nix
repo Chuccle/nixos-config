@@ -1,62 +1,41 @@
 {
-  flake.homeModules.foot =
-    { osConfig, ... }:
-    let
-      inherit (osConfig) theme;
-      inherit (theme) palette;
+  flake.homeModules.foot = {
+    programs.foot = {
+      enable = true;
 
-      glass = theme.blur.enable;
-    in
-    {
-      # hjem-rum's own `foot` program module (same as zoxide.mod.nix already
-      # does) generates the ini via pkgs.formats.ini and installs the package,
-      # so no manual `packages`/`xdg.config.files` here. A bare `enable = true`
-      # on the plain hjem `packages`-less module previously set hjem's
-      # per-user flag instead of installing anything — this path avoids that
-      # trap entirely.
-      programs.foot = {
-        enable = true;
-        settings = {
-          main = {
-            font = "${theme.font.mono.name}:size=${toString theme.font.size.normal}";
-            pad = "${toString theme.padding}x${toString theme.padding}";
-          };
+      # GRUVBOX DARK HARD
+      settings = {
+        main = {
+          font = "JetBrainsMono Nerd Font:size=16";
+          pad = "8x8";
+        };
 
-          "colors-dark" = {
-            # `surface`, not `base` — `base` is the desktop backdrop tone
-            # (win95's is the literal teal wallpaper color), so using it here
-            # made the terminal window blend into the desktop behind it.
-            background = palette.surface.bare;
-            foreground = palette.text.bare;
+        colors-dark = {
+          background = "1d2021";
+          foreground = "ebdbb2";
 
-            regular0 = palette.surface.bare;
-            regular1 = palette.red.bare;
-            regular2 = palette.green.bare;
-            regular3 = palette.yellow.bare;
-            regular4 = palette.blue.bare;
-            regular5 = palette.accent.bare;
-            regular6 = palette.blue.bare;
-            regular7 = palette.subtext.bare;
+          regular0 = "282828";
+          regular1 = "cc241d";
+          regular2 = "98971a";
+          regular3 = "d79921";
+          regular4 = "458588";
+          regular5 = "b16286";
+          regular6 = "689d6a";
+          regular7 = "a89984";
 
-            bright0 = palette.muted.bare;
-            bright1 = palette.red.bare;
-            bright2 = palette.green.bare;
-            bright3 = palette.yellow.bare;
-            bright4 = palette.blue.bare;
-            bright5 = palette.accent.bare;
-            bright6 = palette.blue.bare;
-            bright7 = palette.text.bare;
+          bright0 = "928374";
+          bright1 = "fb4934";
+          bright2 = "b8bb26";
+          bright3 = "fabd2f";
+          bright4 = "83a598";
+          bright5 = "d3869b";
+          bright6 = "8ec07c";
+          bright7 = "ebdbb2";
 
-            "selection-foreground" = palette.accentText.bare;
-            "selection-background" = palette.accent.bare;
-
-            # GLASS: same opacity token the shell popups/dock use, so the
-            # terminal's translucency matches. Flat themes (blur.enable =
-            # false) stay fully opaque, so niri's compositor-level
-            # blur-behind is never visible through it either.
-            alpha = builtins.toJSON (if glass then theme.blur.opacity else 1.0);
-          };
+          selection-foreground = "1d2021";
+          selection-background = "8ec07c";
         };
       };
     };
+  };
 }

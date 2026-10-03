@@ -13,7 +13,7 @@ Never use `git`. Always use `jj`.
   before `lib.strings`), and the names within a single `inherit` line (e.g.
   `inherit (lib.strings) concatStringsSep removePrefix;`). Does not apply to
   a helper function's own parameter attrset when its order is semantically
-  meaningful (e.g. it must mirror a fixed external format/enum) — leave those
+  meaningful (e.g. it must mirror a fixed external format/enum); leave those
   as documented by a comment instead.
 - Always use the Dendritic Pattern (flake-parts `*.mod.nix` auto-discovery).
 - Always prefer `${getExe pkgs.something}` over bare command names in shell
@@ -47,6 +47,6 @@ Never use `git`. Always use `jj`.
   instead of `mkIf condition (toJSON { ... })`. Does not apply when the
   parenthesized expression is not the last argument (e.g.
   `callPackage (...) { }`). Does not work with `if`, `let`, or lambda
-  expressions on the RHS — those still need parentheses.
+  expressions on the RHS; those still need parentheses.
 - Do not use `builtins.` in modules.
 - Never use `rec` ever. Worst case, define a custom `fix`.
