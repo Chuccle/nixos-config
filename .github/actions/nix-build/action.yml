@@ -1,17 +1,9 @@
 name: nix-build
-description: Build one of this flake's output sets on a cleaned runner and push it to cachix.
-
-# Extracted so the two jobs that call it cannot drift. The caller does its own
-# `actions/checkout` first — a local action has to be on disk before it can be
-# resolved.
-#
-# Third-party actions are pinned by commit rather than by tag: a tag can be
-# moved, and every one of these runs on a runner holding CACHIX_AUTH_TOKEN. The
-# trailing comment is the version that commit was.
+description: Build a selection of this flake's outputs and push them to cachix.
 
 inputs:
-  attr:
-    description: Flake output set to build, without the `.#` — `checks`, `packages` or `devShells`.
+  select:
+    description: Function from `{ inputs, outputs }` to the attrset to build.
     required: true
   cachix-auth-token:
     description: Token the push authenticates with.
@@ -20,73 +12,35 @@ inputs:
 runs:
   using: composite
   steps:
-    # Free runners start with ~14 GB free disk; the desktop toplevel (niri,
-    # DMS, Qt, Electron, ida-pro, server tarballs) needs far more. Reclaim
-    # ~25-30 GB by dropping toolchains we never use.
-    - name: Free disk space
-      uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
-      with:
-        tool-cache: true
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
-
-    # v31 is a composite action rather than a Node one, so it also drops off
-    # the deprecated-Node treadmill. It hands nix the job's own GITHUB_TOKEN as
-    # `access-tokens = github.com=...`, which takes flake input fetches off the
-    # shared unauthenticated rate limit.
-    #
-    # The substituters are repeated here rather than left to the flake's
-    # nixConfig, because nix-fast-build never builds a flake reference: it
-    # evaluates `.#<attr>` with nix-eval-jobs and then runs `nix build` on the
-    # resulting *store paths* (nix_fast_build/build.py). A store path carries no
-    # flake, so there is nothing for the CLI to read nixConfig from at the point
-    # the substituters are actually needed. Written into /etc/nix/nix.conf they
-    # apply to every nix invocation in the job, and to the daemon rather than
-    # only to a trusted client.
-    #
-    # Same four as flake.nix, which stays as it is for anyone building this
-    # flake by hand; `modules/nix.mod.nix` and `modules/cachy.mod.nix` carry
-    # them for the machines. Three consumers, three places — keep them in step.
     - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
       with:
-        install_url: https://releases.nixos.org/nix/nix-2.34.7/install
+        install_url: https://releases.nixos.org/nix/nix-2.35.1/install
         extra_nix_config: |
           experimental-features = nix-command flakes pipe-operators
-          accept-flake-config = true
-          extra-substituters = https://attic.xuyh0120.win/lantian https://cache.numtide.com https://chuccle.cachix.org https://nix-community.cachix.org
-          extra-trusted-public-keys = lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+          extra-substituters = https://attic.xuyh0120.win/lantian https://chuccle.cachix.org https://nix-community.cachix.org
+          extra-trusted-public-keys = lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc= chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
 
-    # Installs the `cachix` binary that --cachix-cache shells out to, and
-    # authenticates it for the push. It also configures chuccle as a
-    # substituter, which the extra_nix_config above does as well — that part is
-    # redundant here, and kept as insurance against a typo in the key.
-    # skipPush: nix-fast-build does the push.
     - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
       with:
         name: chuccle
         authToken: ${{ inputs.cachix-auth-token }}
         skipPush: true
 
-    # Pinned to a tag rather than tracking the default branch, so the tool
-    # cannot change under CI without a visible diff.
-    #
-    # Deliberately not `nix run --inputs-from . nixpkgs#nix-fast-build`, which
-    # looks tidier and deadlocks: `--inputs-from .` makes the *outer* nix
-    # evaluate this flake to resolve `nixpkgs#`, populating ~/.cache/nix, and
-    # nix-fast-build then runs its own nix-eval-jobs, built by the locked
-    # nixpkgs against a different nix. Two versions sharing one cache directory
-    # wedge while unpacking a flake input into the Git cache.
-    - name: Build and cache ${{ inputs.attr }}
+    - name: Fetch flake inputs and nix-fast-build
       shell: bash
       run: |
-        nix run github:Mic92/nix-fast-build/1.6.0 -- \
-          --flake ".#${{ inputs.attr }}" \
+        nix flake archive --json | jq -r '.inputs | .. | .path? // empty' | cachix push chuccle
+        nix build --inputs-from . --out-link "$RUNNER_TEMP/nix-fast-build" nixpkgs#nix-fast-build
+
+    - name: Build and cache
+      shell: bash
+      run: |
+        "$RUNNER_TEMP/nix-fast-build/bin/nix-fast-build" \
+          --flake . \
+          --select "$SELECT" \
           --no-nom \
           --skip-cached \
           --cachix-cache chuccle
       env:
+        SELECT: ${{ inputs.select }}
         CACHIX_AUTH_TOKEN: ${{ inputs.cachix-auth-token }}
