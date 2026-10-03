@@ -48,7 +48,7 @@ runs:
     # apply to every nix invocation in the job, and to the daemon rather than
     # only to a trusted client.
     #
-    # Same four as flake.nix, which stays as it is for anyone building this
+    # Same three as flake.nix, which stays as it is for anyone building this
     # flake by hand; `modules/nix.mod.nix` and `modules/cachy.mod.nix` carry
     # them for the machines. Three consumers, three places — keep them in step.
     - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
@@ -57,8 +57,8 @@ runs:
         extra_nix_config: |
           experimental-features = nix-command flakes pipe-operators
           accept-flake-config = true
-          extra-substituters = https://attic.xuyh0120.win/lantian https://cache.numtide.com https://chuccle.cachix.org https://nix-community.cachix.org
-          extra-trusted-public-keys = lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+          extra-substituters = https://attic.xuyh0120.win/lantian https://chuccle.cachix.org https://nix-community.cachix.org
+          extra-trusted-public-keys = lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc= chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
 
     # Installs the `cachix` binary that --cachix-cache shells out to, and
     # authenticates it for the push. It also configures chuccle as a

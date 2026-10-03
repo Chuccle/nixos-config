@@ -38,11 +38,13 @@ let
   ];
 
   # fonts-disable kills fontconfig for headless hosts; on a desktop it leaves
-  # every GUI toolkit fontless, so exclude it alongside the server-only service.
+  # every GUI toolkit fontless, so exclude it alongside the server-only
+  # modules. agenix declares secrets encrypted only to nemoclaw-server-lxc.
   modules =
     (
       self.nixosModules
       |> flip removeAttrs [
+        "agenix"
         "peergos-service"
         "fonts-disable"
       ]

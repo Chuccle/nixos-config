@@ -51,10 +51,10 @@ jobs:
 
   # After `build`, not beside it. Every LXC tarball here contains the host
   # toplevel that `checks` builds as `host-<name>`, and two runners share no
-  # store — so run in parallel they each compiled the same four closures from
-  # scratch. That is not a rounding error: the run before this job existed
-  # compiled zeroclaw's Rust workspace twice at once, 42m43s a side, because
-  # `zeroclaw-server-lxc` is both a check and a package. Ordered this way the
+  # store — so run in parallel they each compiled the same closures from
+  # scratch, because every server host is both a check and a package. That is
+  # not a rounding error: a cold host toplevel is tens of minutes, paid twice
+  # at once. Ordered this way the
   # toplevels are already in cachix by the time this starts, and only the
   # tarballs are new work. Standard runners are free on a public repository, so
   # the win is not a bill: it is not doing the same forty minutes twice, and

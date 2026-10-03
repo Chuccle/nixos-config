@@ -1,4 +1,38 @@
+{ inputs, ... }:
 {
+  # AGENIX
+  # Vendor API keys, encrypted to nemoclaw-server-lxc's SSH host key and
+  # committed as `secrets/*.age`. Recipients live in `secrets/secrets.nix`.
+  # Each file is one `NAME=value` line, so a consumer can read it as an
+  # `EnvironmentFile=`.
+  flake.nixosModules.agenix =
+    { lib, ... }:
+    let
+      inherit (lib.attrsets) genAttrs;
+      inherit (lib.lists) singleton;
+    in
+    {
+      imports = singleton inputs.agenix.nixosModules.default;
+
+      # The LXC hosts run no sshd, so agenix's default (derived from
+      # `services.openssh.hostKeys`) is empty. The key is generated once by
+      # hand; see secrets/secrets.nix.
+      age.identityPaths = singleton "/etc/ssh/ssh_host_ed25519_key";
+
+      age.secrets =
+        genAttrs
+          [
+            "anthropic_api"
+            "openai_api"
+            "openrouter_api"
+          ]
+          (name: {
+            file = ./secrets + "/${name}.age";
+            owner = "root";
+            mode = "0400";
+          });
+    };
+
   flake.nixosModules.secrets =
     {
       config,

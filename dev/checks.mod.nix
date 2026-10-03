@@ -40,6 +40,7 @@
       devShells.default = pkgs.mkShell {
         packages = [
           treefmt.config.build.wrapper
+          inputs.agenix.packages.${system}.default
           pkgs.deadnix
           pkgs.direnv
           pkgs.nil

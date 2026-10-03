@@ -15,9 +15,6 @@
     #                  Without the substituter that pinning buys nothing and
     #                  `box` and both ISOs compile a patched kernel from
     #                  source.
-    #   numtide        the llm-agents package set: hermes-agent, opencode,
-    #                  ai-memory and zeroclaw. This only works because the
-    #                  input does not follow this flake's nixpkgs; see below.
     #   chuccle        this repo's own CI output. The cache workflow has been
     #                  pushing every host toplevel and server tarball here all
     #                  along and only the workflow read them back, so a local
@@ -33,14 +30,12 @@
     # read.
     extra-substituters = [
       "https://attic.xuyh0120.win/lantian"
-      "https://cache.numtide.com"
       "https://chuccle.cachix.org"
       "https://nix-community.cachix.org"
     ];
 
     extra-trusted-public-keys = [
       "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
-      "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
       "chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
     ];
@@ -96,24 +91,9 @@
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  # Deliberately does not follow this flake's nixpkgs. Upstream builds and
-  # caches this package set against one pinned `nixpkgs-unstable` rev, so
-  # following rewrites every derivation hash and turns cache.numtide.com into
-  # a complete miss — hermes-agent, opencode and ai-memory then build from
-  # source on every closure change, and this repo tracks
-  # `nixos-unstable-small` rather than `nixpkgs-unstable` anyway, so the revs
-  # could never line up. The price is a second nixpkgs evaluation.
-  inputs.llm-agents = {
-    url = "github:numtide/llm-agents.nix";
-  };
-
-  # Source-only, purely for `nix/module.nix` — the ZeroClaw binary itself comes
-  # from llm-agents. Pinned to the same tag llm-agents packages (v0.8.4) so the
-  # module and the binary never drift apart; upstream's own flake exports no
-  # zeroclaw package, so there is nothing else to take from it.
-  inputs.zeroclaw = {
-    url = "github:zeroclaw-labs/zeroclaw/v0.8.4";
-    flake = false;
+  inputs.agenix = {
+    url = "github:ryantm/agenix";
+    inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
