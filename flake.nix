@@ -4,13 +4,11 @@
   nixConfig = {
     # SUBSTITUTERS
     extra-substituters = [
-      "https://attic.xuyh0120.win/lantian"
       "https://chuccle.cachix.org"
       "https://nix-community.cachix.org"
     ];
 
     extra-trusted-public-keys = [
-      "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
       "chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
     ];
@@ -29,10 +27,6 @@
   inputs.flake-parts = {
     url = "github:hercules-ci/flake-parts";
     inputs.nixpkgs-lib.follows = "nixpkgs";
-  };
-
-  inputs.nix-cachyos-kernel = {
-    url = "github:xddxdd/nix-cachyos-kernel/release";
   };
 
   inputs.treefmt-nix = {
