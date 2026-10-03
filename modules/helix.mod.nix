@@ -1,6 +1,11 @@
 {
   flake.homeModules.helix =
-    { lib, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
       inherit (lib.attrsets)
         attrValues
@@ -11,11 +16,9 @@
       inherit (lib.lists) elem singleton;
       inherit (lib.meta) getExe;
       inherit (lib.trivial) const flip;
-
-      package = pkgs.helix;
     in
     {
-      environment.sessionVariables.EDITOR = getExe package;
+      environment.sessionVariables.EDITOR = getExe config.programs.helix.package;
 
       xdg.mime-apps.default-applications = flip genAttrs (const "Helix.desktop") [
         "application/x-shellscript"
@@ -35,9 +38,9 @@
         "text/x-tex"
       ];
 
-      packages = singleton package;
-      xdg.config.files."helix/config.toml".generator = pkgs.writers.writeTOML "helix-config.toml";
-      xdg.config.files."helix/config.toml".value = {
+      programs.helix.enable = true;
+
+      programs.helix.settings = {
         theme = "gruvbox_dark_hard";
 
         editor = {
@@ -86,8 +89,7 @@
           };
       };
 
-      xdg.config.files."helix/languages.toml".generator = pkgs.writers.writeTOML "helix-languages.toml";
-      xdg.config.files."helix/languages.toml".value = {
+      programs.helix.languages = {
         language-server.deno = {
           command = "deno";
           args = singleton "lsp";
@@ -213,12 +215,10 @@
                       import pathlib
                       import lldb
 
-                      # Not hardcoding a nix store path here on purpose.
                       rustlib_etc = pathlib.Path(subprocess.getoutput("rustc --print sysroot")) / "lib" / "rustlib" / "etc"
                       if not rustlib_etc.exists():
                           raise RuntimeError("Unable to determine rustc sysroot")
 
-                      # Load lldb_lookup.py and execute lldb_commands with the correct path
                       lldb.debugger.HandleCommand(f"""command script import "{rustlib_etc / 'lldb_lookup.py'}" """)
                       lldb.debugger.HandleCommand(f"""command source -s 0 "{rustlib_etc / 'lldb_commands'}" """)
                     '';

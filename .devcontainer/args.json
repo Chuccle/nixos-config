@@ -1,5 +1,0 @@
-{
-  "useDirenv": "true",
-  "useFlake": "true",
-  "imageVariant": "flake"
-}

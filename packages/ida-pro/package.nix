@@ -164,7 +164,6 @@ stdenv.mkDerivation (finalAttrs: {
       done
     ' sh {} +
 
-    # The sweep above classifies the generated shell wrapper as non-ELF.
     chmod +x $out/opt/ida-pro/ida
 
     rm -f $out/opt/ida-pro/{uninstall,Uninstall}*

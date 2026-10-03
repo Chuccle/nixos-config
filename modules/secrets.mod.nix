@@ -25,11 +25,6 @@
 
       cfg = config.secrets;
 
-      # The unit is a real script driven by generated data, not a script
-      # assembled by string concatenation: `reconcile.sh` is a reviewable file
-      # that shellcheck runs over at build time, and each secret's generator is
-      # its own shellcheck'd program. A malformed generator is a build failure,
-      # never a surprise at first boot.
       manifest = pkgs.writers.writeJSON "secrets-manifest.json" (
         mapAttrsToList (
           name:
@@ -65,25 +60,6 @@
     in
     {
       # PERSISTENT SECRETS
-      # One declaration per credential, reconciled by a single oneshot ordered
-      # before anything that consumes them. Two provisioning modes:
-      #
-      #   generate — a program whose stdout becomes the secret. For values with
-      #              no external truth: random keys, tokens, anything the box
-      #              can mint for itself.
-      #   omitted  — externally provisioned. The module owns the directory and
-      #              the permissions, never the content. For values only a
-      #              human or another service has.
-      #
-      # Nothing here ever prompts: boot must stay non-interactive, or an
-      # unattended reboot wedges at a password nobody is there to answer.
-      # Externally-provisioned secrets are dropped in out-of-band, and their
-      # consumers gate on the file existing rather than crash-looping without
-      # it.
-      #
-      # Consumers should read these through systemd `LoadCredential=` rather
-      # than opening the path directly, so the plaintext is only ever visible
-      # inside the consuming unit's credential namespace.
       options.secrets = {
         directory = mkOption {
           type = path;
@@ -109,13 +85,7 @@
                   script = mkOption {
                     type = nullOr lines;
                     default = null;
-                    description = ''
-                      Shell snippet whose stdout becomes the secret, run only
-                      when the file is missing or empty. Wrapped in a
-                      shellcheck'd program, so a mistake here fails the build
-                      rather than the first boot. Leave null for a secret
-                      provisioned from outside the configuration.
-                    '';
+                    description = "Shell snippet whose stdout becomes the secret; null for one provisioned by hand.";
                   };
 
                   generate = mkOption {
@@ -130,11 +100,7 @@
                           text = config.script;
                         };
                     defaultText = "a shellcheck'd wrapper around `script`";
-                    description = ''
-                      Program whose stdout becomes the secret. Defaults to a
-                      wrapper around `script`; set it directly to supply a
-                      package instead.
-                    '';
+                    description = "Program whose stdout becomes the secret.";
                   };
 
                   owner = mkOption {
@@ -165,8 +131,8 @@
         assertions = mapAttrsToList (name: secret: {
           assertion = hasPrefix "${cfg.directory}/" "${secret.path}";
           message = ''
-            secrets.files.${name}.path must live under ${cfg.directory} — that
-            is the only directory the bootstrap unit is allowed to write to.
+            secrets.files.${name}.path must live under ${cfg.directory}, the
+            only directory the bootstrap unit can write to.
           '';
         }) cfg.files;
 
@@ -189,10 +155,6 @@
 
             ExecStart = getExe reconcile;
 
-            # Writes root-owned files under `directory` and hands some of them
-            # to a service user, so it keeps CAP_CHOWN/CAP_FOWNER and nothing
-            # else. The assertion above guarantees every declared path is under
-            # `directory`, which makes this ReadWritePaths list exhaustive.
             ProtectSystem = "strict";
             ProtectHome = true;
             PrivateTmp = true;

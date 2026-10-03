@@ -24,13 +24,7 @@
           "bash"
           "zsh"
         ];
-        description = ''
-          Default login shell for all users.
-
-            "nushell" — Nu shell (structured data, modern feel)
-            "bash"    — GNU Bash (ubiquitous, POSIX)
-            "zsh"     — Z shell (interactive-friendly)
-        '';
+        description = "Default login shell for all users.";
         example = "nushell";
       };
 
@@ -38,7 +32,6 @@
         environment.shells = singleton shellPkg;
         users.defaultUserShell = shellPkg;
 
-        # zsh requires explicit NixOS module activation for /etc/zshrc etc.
         programs.zsh.enable = config.shell.default == "zsh";
       };
     };

@@ -1,11 +1,6 @@
 {
   flake.nixosModules.fonts =
-    {
-      config,
-      lib,
-      pkgs,
-      ...
-    }:
+    { lib, pkgs, ... }:
     let
       inherit (lib.lists) singleton;
     in
@@ -17,17 +12,18 @@
       };
 
       fonts.packages = [
-        config.theme.font.sans.package
-        config.theme.font.mono.package
+        pkgs.lexend
+        pkgs.nerd-fonts.jetbrains-mono
 
         pkgs.noto-fonts
         pkgs.noto-fonts-cjk-sans
         pkgs.noto-fonts-lgc-plus
         pkgs.noto-fonts-color-emoji
       ];
-    };
 
-  flake.nixosModules.fonts-disable = {
-    fonts.fontconfig.enable = false;
-  };
+      fonts.fontconfig.defaultFonts = {
+        sansSerif = singleton "Lexend";
+        monospace = singleton "JetBrainsMono Nerd Font";
+      };
+    };
 }

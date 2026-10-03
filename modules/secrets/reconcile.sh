@@ -1,14 +1,4 @@
 # shellcheck shell=bash
-#
-# Reconcile the persistent secret store from a generated manifest.
-#
-# The manifest is JSON rather than generated shell: adding a secret changes
-# data, never this control flow. Every declared secret is idempotent — a
-# generator only runs when the file is missing or empty, and permissions are
-# reconciled on every pass whether or not the content was touched.
-#
-# Environment:
-#   SECRETS_MANIFEST  JSON array of {name, path, generator|null, owner, group, mode}
 
 set -euo pipefail
 umask 0077
@@ -30,10 +20,8 @@ while IFS= read -r entry; do
   if [[ -n "$generator" && ! -s "$path" ]]; then
     echo "provisioning $name"
 
-    # Written beside the target and renamed into place, so a kill mid-write
-    # can never leave a truncated credential that later looks provisioned.
     tmp="$(mktemp "$(dirname "$path")/.provisioning.XXXXXX")"
-    # shellcheck disable=SC2064  # $tmp is intentionally expanded now, not at trap time
+    # shellcheck disable=SC2064
     trap "rm -f '$tmp'" EXIT
 
     if ! "$generator" >"$tmp"; then
