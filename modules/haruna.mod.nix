@@ -3,10 +3,19 @@
     { lib, pkgs, ... }:
     let
       inherit (lib.attrsets) genAttrs;
-      inherit (lib.lists) singleton;
       inherit (lib.trivial) const flip;
     in
     {
+      packages = [
+        pkgs.haruna
+        pkgs.kdePackages.breeze
+      ];
+
+      xdg.config.files."haruna/haruna.conf" = {
+        generator = (pkgs.formats.ini { }).generate "haruna.conf";
+        value.General.ColorScheme = "Breeze Dark";
+      };
+
       xdg.mime-apps.default-applications = flip genAttrs (const "org.kde.haruna.desktop") [
         "audio/aac"
         "audio/ac3"
@@ -28,7 +37,5 @@
         "video/x-matroska"
         "video/x-ms-wmv"
       ];
-
-      packages = singleton pkgs.haruna;
     };
 }

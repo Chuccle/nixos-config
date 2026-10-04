@@ -42,6 +42,8 @@ Never use `git`. Always use `jj`.
   attribute rather than a separate `let` binding.
 - If a package is its own concern (e.g. a custom C tool), put the `perSystem`
   definition in its own `.mod.nix` file separate from the module that uses it.
+- Prefer `|>` for sequential transformations, reading from the initial value
+  through each function in evaluation order.
 - Prefer `<|` (pipe-last) over parentheses when the parenthesized expression is
   the final argument to a function. E.g. `mkIf condition <| toJSON { ... }`
   instead of `mkIf condition (toJSON { ... })`. Does not apply when the

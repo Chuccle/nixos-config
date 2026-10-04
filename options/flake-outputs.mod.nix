@@ -19,7 +19,7 @@ in
   options.flake.homeModules = mkOption {
     type = lazyAttrsOf deferredModule;
     default = { };
-    apply = mapAttrs (wrap "homeModules");
+    apply = mapAttrs <| wrap "homeModules";
     description = "Home modules.";
   };
 }

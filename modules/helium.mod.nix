@@ -7,6 +7,7 @@ let
   inherit (lib.trivial) importJSON;
 
   extensions = {
+    bitwarden.id = "nngceckbapebfimnlniiiahkandclblb";
     clearurls.id = "lckanjgmijmafbedllaakclkaicjfmnk";
     dark-reader.id = "eimadpbcbfnmbkopoojfekhnkhdbieeh";
     dearrow.id = "enamippconapkdmgfgjchkhakpfinmaj";
@@ -109,6 +110,10 @@ in
         "x-scheme-handler/https"
       ];
 
-      packages = singleton inputs.helium.packages.${osConfig.nixpkgs.hostPlatform.system}.default;
+      packages =
+        singleton
+        <| inputs.helium.packages.${osConfig.nixpkgs.hostPlatform.system}.default.overrideAttrs {
+          extraBwrapArgs = singleton "--ro-bind-try /etc/chromium /etc/chromium";
+        };
     };
 }

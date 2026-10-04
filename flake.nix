@@ -2,15 +2,20 @@
   description = "NixOS hosts and modules";
 
   nixConfig = {
-    # SUBSTITUTERS
     extra-substituters = [
       "https://chuccle.cachix.org"
+      "https://crane.cachix.org"
+      "https://niri.cachix.org"
       "https://nix-community.cachix.org"
+      "https://pre-commit-hooks.cachix.org"
     ];
 
     extra-trusted-public-keys = [
       "chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w="
+      "crane.cachix.org-1:8Scfpmn9w+hGdXH/Q9tTLiYAE/2dnJYRJP7kl80GuRk="
+      "niri.cachix.org-1:Wv0OmO7PsuocRKzfDoJ3mulSl7Z6oezYhGhR+3W2964="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+      "pre-commit-hooks.cachix.org-1:Pkk3Panw5AW24TOv6kz3PvLhlH8puAsJTBbOPmBo7Rc="
     ];
 
     experimental-features = [
@@ -34,6 +39,16 @@
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
+  inputs.dms = {
+    url = "github:AvengeMedia/DankMaterialShell";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  inputs.niri = {
+    url = "github:sodiboo/niri-flake";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
   inputs.hjem = {
     url = "github:feel-co/hjem";
     inputs.nixpkgs.follows = "nixpkgs";
@@ -47,6 +62,11 @@
 
   inputs.helium = {
     url = "github:AlvaroParker/helium-nix";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  inputs.lanzaboote = {
+    url = "github:nix-community/lanzaboote";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -70,7 +90,7 @@
       {
         systems = singleton "x86_64-linux";
 
-        imports = filter (hasSuffix ".mod.nix") (listFilesRecursive ./.);
+        imports = ./. |> listFilesRecursive |> filter (hasSuffix ".mod.nix");
 
         perSystem =
           { system, ... }:
