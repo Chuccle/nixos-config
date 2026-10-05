@@ -3,13 +3,12 @@
     { lib, pkgs, ... }:
     let
       inherit (lib.attrsets) genAttrs;
+      inherit (lib.lists) singleton;
       inherit (lib.trivial) const flip;
     in
     {
       xdg.mime-apps.default-applications =
-        flip genAttrs (const "org.kde.dolphin.desktop") [
-          "inode/directory"
-        ]
+        (flip genAttrs (const "org.kde.dolphin.desktop") <| singleton "inode/directory")
         // flip genAttrs (const "org.kde.ark.desktop") [
           # LIBARCHIVE (READ-WRITE)
           "application/x-tar"
@@ -74,6 +73,12 @@
       packages = [
         pkgs.kdePackages.dolphin
         pkgs.kdePackages.ark
+        pkgs.kdePackages.breeze
       ];
+
+      xdg.config.files."dolphinrc" = {
+        generator = (pkgs.formats.ini { }).generate "dolphinrc";
+        value.UiSettings.ColorScheme = "BreezeDark";
+      };
     };
 }
