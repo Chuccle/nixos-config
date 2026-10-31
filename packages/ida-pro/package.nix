@@ -85,6 +85,7 @@ stdenv.mkDerivation (finalAttrs: {
     autoPatchelfHook
     file
     nodejs
+    patchelf
   ];
 
   dontUnpack = true;
@@ -171,7 +172,31 @@ stdenv.mkDerivation (finalAttrs: {
     cd $out/opt/ida-pro && node ${keygen}
 
     substituteInPlace $out/opt/ida-pro/cfg/hexrays.cfg \
-      --replace "MAX_FUNCSIZE            = 64" "MAX_FUNCSIZE            = 1024"
+      --replace-fail "MAX_FUNCSIZE            = 64" "MAX_FUNCSIZE            = 1024"
+  '';
+
+  # autoPatchelfHook cannot patch IDA's tools/tilib/tilib: the file has
+  # overlapping PT_LOAD segments, so patchelf aborts with
+  # `assert(splitIndex == -1)` when it grows the file to fit the RPATH.
+  # Hide that one binary while the hook's work runs, then put it back and start
+  # it through the loader with the RPATH the other binaries got.
+  postFixup = /* bash */ ''
+    mv $out/opt/ida-pro/tools/tilib/tilib $TMPDIR/tilib
+
+    # Do autoPatchelfHook's job by hand with the file above hidden, and disable
+    # the hook so it does not run a second time.
+    dontAutoPatchelf=1
+    autoPatchelf -- $out
+
+    tilibInterp=$(patchelf --print-interpreter $out/opt/ida-pro/.ida-wrapped)
+    tilibRpath=$(patchelf --print-rpath $out/opt/ida-pro/.ida-wrapped)
+
+    install -Dm755 $TMPDIR/tilib $out/opt/ida-pro/tools/tilib/.tilib-wrapped
+    printf '#!%s\nexec %q --library-path %q %q "$@"\n' \
+      "${stdenv.shell}" "$tilibInterp" "$tilibRpath:$out/opt/ida-pro" \
+      $out/opt/ida-pro/tools/tilib/.tilib-wrapped \
+      > $out/opt/ida-pro/tools/tilib/tilib
+    chmod +x $out/opt/ida-pro/tools/tilib/tilib
   '';
 
   meta = {
