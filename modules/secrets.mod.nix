@@ -25,8 +25,9 @@
 
       cfg = config.secrets;
 
-      manifest = pkgs.writers.writeJSON "secrets-manifest.json" (
-        mapAttrsToList (
+      manifest =
+        cfg.files
+        |> mapAttrsToList (
           name:
           {
             generate,
@@ -46,8 +47,8 @@
               ;
             generator = if generate == null then null else getExe generate;
           }
-        ) cfg.files
-      );
+        )
+        |> pkgs.writers.writeJSON "secrets-manifest.json";
 
       reconcile = pkgs.writeShellApplication {
         name = "secrets-reconcile";
@@ -70,8 +71,9 @@
         files = mkOption {
           default = { };
           description = "Secrets to reconcile before dependent services start.";
-          type = attrsOf (
-            submodule (
+          type =
+            attrsOf
+            <| submodule (
               { config, name, ... }:
               {
                 options = {
@@ -96,7 +98,7 @@
                       else
                         pkgs.writeShellApplication {
                           name = "secret-${baseNameOf config.path}";
-                          runtimeInputs = [ pkgs.coreutils ];
+                          runtimeInputs = singleton pkgs.coreutils;
                           text = config.script;
                         };
                     defaultText = "a shellcheck'd wrapper around `script`";
@@ -122,8 +124,7 @@
                   };
                 };
               }
-            )
-          );
+            );
         };
       };
 

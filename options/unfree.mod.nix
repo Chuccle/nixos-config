@@ -8,6 +8,8 @@
       inherit (lib.types) listOf str;
     in
     {
+      key = toString ./unfree.mod.nix;
+
       options.allowedUnfreePackageNames = mkOption {
         type = listOf str;
         default = [ ];
