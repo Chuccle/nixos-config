@@ -57,11 +57,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790898470,
-        "narHash": "sha256-zTwuwezD0w3hpga6a6P8emidzAZFyWqlNeRBlpWOOl8=",
+        "lastModified": 1793576659,
+        "narHash": "sha256-V1h85lUaJBQoHFrB2vpXZOE0Ju1MYSnIpsehoVZYlDo=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "024633cd702b10285db5cb19b40ad48d2399ba60",
+        "rev": "ea2630b7470978622c7689a1ff75d2b389175399",
         "type": "github"
       },
       "original": {
@@ -118,11 +118,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792676155,
-        "narHash": "sha256-pqtJMY24++Hv5o4rhIRO/vVBW+TD0dl+hzq33LhWw+0=",
+        "lastModified": 1793913731,
+        "narHash": "sha256-coXwnBPf5/D2WaEHDUOySfMe/1yae3nGliEjWsjIZ3o=",
         "owner": "AlvaroParker",
         "repo": "helium-nix",
-        "rev": "b7552273b0e5f9d4b9cf4eff3e84ba2287e33d6f",
+        "rev": "9c08c9b78974c1312787f0d19dedbb6ddb9d82a1",
         "type": "github"
       },
       "original": {
@@ -138,11 +138,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793026809,
-        "narHash": "sha256-BohcZsIqBOd6YL6+jUkdM4GE+aQc72E6yrqVyt1z5X4=",
+        "lastModified": 1793333241,
+        "narHash": "sha256-hmlUXxCk6On7Hrop/TyS3//dgI2BLvaN4TEsOq1ma+Y=",
         "owner": "feel-co",
         "repo": "hjem",
-        "rev": "d219ef55ab7311d884cf33e114561082fec95f34",
+        "rev": "8408642aa3035135fa6d70269dc93e0814e2a4f6",
         "type": "github"
       },
       "original": {
@@ -215,11 +215,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1793204185,
-        "narHash": "sha256-E4e9bM6FFBaaxGVlR7AfX/mHjpaUEL/Zw9vn6Ft1ZSE=",
+        "lastModified": 1794070417,
+        "narHash": "sha256-leOOarLQ85CtX6NUcHuqNoOCwHbNKLRj6mNK59enKAA=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "679429ff581232d6927f59c362bd670c40b2fcdb",
+        "rev": "d63e5b96ca17ae27b5d248d29564e31ff7a83f02",
         "type": "github"
       },
       "original": {
@@ -315,11 +315,11 @@
     "ublock": {
       "flake": false,
       "locked": {
-        "lastModified": 1793206544,
-        "narHash": "sha256-kGFnWDFAPwdHtGi5mUhGZZvoBUJAY0n8p9GWEFiCi1w=",
+        "lastModified": 1793906453,
+        "narHash": "sha256-YYwfnPdVoBVzaF8s3ec+6PIyrJMCvYh5azHIPDzVy0o=",
         "owner": "gorhill",
         "repo": "uBlock",
-        "rev": "aaefbdb76ed367da08d8aec193d6e8fa1b84485d",
+        "rev": "f3e5e5e0efa4b01035b928a084b8fe018cbcbe99",
         "type": "github"
       },
       "original": {
