@@ -22,6 +22,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: ai-lxc
+            timeout: 60
+            select: >-
+              f: {
+                inherit (f.outputs.checks.x86_64-linux) host-ai-lxc;
+                inherit (f.outputs.packages.x86_64-linux) ai-lxc;
+              }
+
           - name: ente-server-lxc
             timeout: 60
             select: >-
@@ -40,8 +48,8 @@ jobs:
             timeout: 60
             select: >-
               f: {
-                checks = builtins.removeAttrs f.outputs.checks.x86_64-linux [ "host-ente-server-lxc" ];
-                packages = builtins.removeAttrs f.outputs.packages.x86_64-linux [ "ente-server-lxc" "ida-pro" ];
+                checks = builtins.removeAttrs f.outputs.checks.x86_64-linux [ "host-ai-lxc" "host-ente-server-lxc" ];
+                packages = builtins.removeAttrs f.outputs.packages.x86_64-linux [ "ai-lxc" "ente-server-lxc" "ida-pro" ];
                 devShells = f.outputs.devShells.x86_64-linux;
               }
 

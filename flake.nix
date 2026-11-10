@@ -4,11 +4,13 @@
   nixConfig = {
     # SUBSTITUTERS
     extra-substituters = [
+      "https://cache.numtide.com"
       "https://chuccle.cachix.org"
       "https://nix-community.cachix.org"
     ];
 
     extra-trusted-public-keys = [
+      "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
       "chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
     ];
@@ -27,6 +29,10 @@
   inputs.flake-parts = {
     url = "github:hercules-ci/flake-parts";
     inputs.nixpkgs-lib.follows = "nixpkgs";
+  };
+
+  inputs.llmAgents = {
+    url = "github:numtide/llm-agents.nix/87add0847ae4744de25a41a9c77a9ef257bea01b";
   };
 
   inputs.treefmt-nix = {
