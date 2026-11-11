@@ -99,6 +99,9 @@ in
         {
           shell.default = "bash";
 
+          # GARAGE 1.3.1 is EOL upstream; pinned until the garage_2 migration.
+          nixpkgs.config.permittedInsecurePackages = singleton "garage-1.3.1";
+
           environment.systemPackages = singleton pkgs.git;
 
           # GARAGE
