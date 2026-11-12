@@ -32,10 +32,6 @@
     inputs.nixpkgs-lib.follows = "nixpkgs";
   };
 
-  inputs.llmAgents = {
-    url = "github:numtide/llm-agents.nix/87add0847ae4744de25a41a9c77a9ef257bea01b";
-  };
-
   inputs.treefmt-nix = {
     url = "github:numtide/treefmt-nix";
     inputs.nixpkgs.follows = "nixpkgs";

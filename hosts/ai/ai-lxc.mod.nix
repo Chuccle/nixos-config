@@ -23,7 +23,7 @@ in
         let
           inherit (lib.lists) singleton;
           inherit (lib.meta) getExe;
-          dsh = inputs.llmAgents.packages.x86_64-linux.dsh;
+          dsh = pkgs.deepseek-harness;
 
           # The three dsh spawns by name — bash (shell), rg (glob/grep tools),
           # bwrap (sandbox) — plus git/ssh for repository work. coreutils,
