@@ -27,18 +27,34 @@ runs:
     - name: Fetch flake inputs and nix-fast-build
       shell: bash
       run: |
-        nix flake archive --json | jq -r '.inputs | .. | .path? // empty' | cachix push chuccle
+        # 2.35's eval workers deadlock fetching flake inputs concurrently, so
+        # they are fetched once up front on every run - including pull
+        # requests, whose lockfile may reference inputs no cache holds yet.
+        nix flake archive --json >"$RUNNER_TEMP/inputs.json"
+
+        if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+          jq -r '.inputs | .. | .path? // empty' "$RUNNER_TEMP/inputs.json" | cachix push chuccle
+        fi
+
         nix build --inputs-from . --out-link "$RUNNER_TEMP/nix-fast-build" nixpkgs#nix-fast-build
 
     - name: Build and cache
       shell: bash
       run: |
+        # Pushing the closure from every pull request spent most of the job on
+        # upload and evicted what main needs from a 5 GiB cache, so only main
+        # publishes. Pulls still substitute from chuccle.
+        pushArgs=()
+        if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+          pushArgs=(--cachix-cache chuccle)
+        fi
+
         "$RUNNER_TEMP/nix-fast-build/bin/nix-fast-build" \
           --flake . \
           --select "$SELECT" \
           --no-nom \
           --skip-cached \
-          --cachix-cache chuccle
+          "${pushArgs[@]}"
       env:
         SELECT: ${{ inputs.select }}
         CACHIX_AUTH_TOKEN: ${{ inputs.cachix-auth-token }}
