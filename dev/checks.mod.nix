@@ -4,11 +4,9 @@
     {
       lib,
       pkgs,
-      system,
       ...
     }:
     let
-      inherit (lib.attrsets) filterAttrs mapAttrs' nameValuePair;
       inherit (lib.lists) singleton;
       treefmt = inputs.treefmt-nix.lib.evalModule pkgs (_: {
         projectRootFile = "flake.nix";
@@ -38,10 +36,6 @@
         };
       };
 
-      hostChecks =
-        self.nixosConfigurations
-        |> filterAttrs (_name: cfg: cfg.config.nixpkgs.hostPlatform.system == system)
-        |> mapAttrs' (name: cfg: nameValuePair "host-${name}" cfg.config.system.build.toplevel);
     in
     {
       formatter = treefmt.config.build.wrapper;
@@ -68,6 +62,13 @@
             installPhase = "touch $out";
           }
         ) { };
+        actionlint = pkgs.stdenvNoCC.mkDerivation {
+          name = "actionlint-check";
+          src = self;
+          nativeBuildInputs = singleton pkgs.actionlint;
+          buildPhase = "actionlint .github/workflows/*.yml";
+          installPhase = "touch $out";
+        };
         statix = pkgs.callPackage (
           { statix, stdenvNoCC }:
           stdenvNoCC.mkDerivation {
@@ -78,7 +79,6 @@
             installPhase = "touch $out";
           }
         ) { };
-      }
-      // hostChecks;
+      };
     };
 }

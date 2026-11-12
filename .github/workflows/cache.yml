@@ -10,6 +10,10 @@ on:
         description: Upload the blorg live ISO for download
         type: boolean
         default: false
+      build-desktops:
+        description: Build the desktop hosts instead of only evaluating them
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,32 +35,22 @@ jobs:
             timeout: 60
             select: >-
               f: {
-                inherit (f.outputs.checks.x86_64-linux) host-ai-lxc;
-                inherit (f.outputs.packages.x86_64-linux) ai-lxc;
+                system = f.outputs.nixosConfigurations.ai-lxc.config.system.build.toplevel;
+                tarball = f.outputs.packages.x86_64-linux.ai-lxc;
               }
 
           - name: ente-server-lxc
             timeout: 60
             select: >-
               f: {
-                inherit (f.outputs.checks.x86_64-linux) host-ente-server-lxc;
-                inherit (f.outputs.packages.x86_64-linux) ente-server-lxc;
+                system = f.outputs.nixosConfigurations.ente-server-lxc.config.system.build.toplevel;
+                tarball = f.outputs.packages.x86_64-linux.ente-server-lxc;
               }
 
           - name: ida-pro
             timeout: 60
             select: >-
               f: { inherit (f.outputs.packages.x86_64-linux) ida-pro; }
-
-          # Everything the jobs above do not claim.
-          - name: rest
-            timeout: 60
-            select: >-
-              f: {
-                checks = builtins.removeAttrs f.outputs.checks.x86_64-linux [ "host-ai-lxc" "host-ente-server-lxc" ];
-                packages = builtins.removeAttrs f.outputs.packages.x86_64-linux [ "ai-lxc" "ente-server-lxc" "ida-pro" "blorg-live" ];
-                devShells = f.outputs.devShells.x86_64-linux;
-              }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,12 +60,49 @@ jobs:
           select: ${{ matrix.select }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+  # nix flake check builds only the lint checks, but still evaluates every
+  # host, so a broken configuration fails here without building a system.
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes pipe-operators
+            accept-flake-config = true
+
+      - run: nix flake check --keep-going
+
+  # A desktop closure recompiles for far longer than a pull request should hold
+  # a runner, so it only runs when asked for. eval-<host> checks in the other
+  # jobs cover evaluation on every run.
+  desktops:
+    name: desktops
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs['build-desktops'] || inputs['publish-iso']) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The desktop closures are far larger than the 5 GiB cache; building them
+      # is the point, publishing them would evict every server.
+      - uses: ./.github/actions/nix-build
+        with:
+          select: >-
+            f: { inherit (f.outputs.checks.x86_64-linux) host-blorg host-blorg-live; }
+          publish: "false"
+          cachix-auth-token: ""
+
       - name: Fetch live ISO
-        if: github.event_name == 'workflow_dispatch' && inputs.publish-iso && matrix.name == 'rest'
+        if: inputs['publish-iso']
         run: nix build .#blorg-live --out-link "$RUNNER_TEMP/blorg-live"
 
       - name: Upload live ISO
-        if: github.event_name == 'workflow_dispatch' && inputs.publish-iso && matrix.name == 'rest'
+        if: inputs['publish-iso']
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ runner.temp }}/blorg-live/iso/*.iso

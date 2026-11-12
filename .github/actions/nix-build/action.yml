@@ -9,6 +9,10 @@ inputs:
     description: Token the push authenticates with.
     required: true
 
+  publish:
+    description: Push built paths to cachix. Callers that would flood the cache turn this off.
+    default: "true"
+
 runs:
   using: composite
   steps:
@@ -26,13 +30,15 @@ runs:
 
     - name: Fetch flake inputs and nix-fast-build
       shell: bash
+      env:
+        PUBLISH: ${{ inputs.publish }}
       run: |
         # 2.35's eval workers deadlock fetching flake inputs concurrently, so
         # they are fetched once up front on every run - including pull
         # requests, whose lockfile may reference inputs no cache holds yet.
         nix flake archive --json >"$RUNNER_TEMP/inputs.json"
 
-        if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+        if [ "$PUBLISH" = "true" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
           jq -r '.inputs | .. | .path? // empty' "$RUNNER_TEMP/inputs.json" | cachix push chuccle
         fi
 
@@ -45,7 +51,7 @@ runs:
         # upload and evicted what main needs from a 5 GiB cache, so only main
         # publishes. Pulls still substitute from chuccle.
         pushArgs=()
-        if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+        if [ "$PUBLISH" = "true" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
           pushArgs=(--cachix-cache chuccle)
         fi
 
@@ -57,4 +63,5 @@ runs:
           "${pushArgs[@]}"
       env:
         SELECT: ${{ inputs.select }}
+        PUBLISH: ${{ inputs.publish }}
         CACHIX_AUTH_TOKEN: ${{ inputs.cachix-auth-token }}
