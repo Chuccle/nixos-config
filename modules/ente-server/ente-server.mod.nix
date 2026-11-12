@@ -77,7 +77,7 @@
 
       credentialsOf =
         unit:
-        config.secrets.files
+        config.services.ente-server.secrets.files
         |> filterAttrs (name: _: hasPrefix "${unit}/" name)
         |> mapAttrsToList (name: { path, ... }: "${removePrefix "${unit}/" name}:${path}");
 
@@ -239,7 +239,7 @@
         };
 
         # SECRETS
-        secrets.files =
+        services.ente-server.secrets.files =
           let
             openssl = getExe pkgs.openssl;
 
@@ -297,11 +297,13 @@
             Restart = "on-failure";
             RestartSec = "10s";
 
-            LoadCredential = singleton "rpc_secret:${config.secrets.files."garage/rpc_secret".path}";
+            LoadCredential = singleton "rpc_secret:${
+              config.services.ente-server.secrets.files."garage/rpc_secret".path
+            }";
 
             ProtectHome = "tmpfs";
 
-            ReadWritePaths = singleton config.secrets.directory;
+            ReadWritePaths = singleton config.services.ente-server.secrets.directory;
           };
 
           environment = {
@@ -329,8 +331,8 @@
               };
             };
 
-            ACCESS_KEY_FILE = config.secrets.files."ente/s3-access-key-id".path;
-            SECRET_KEY_FILE = config.secrets.files."ente/s3-secret-access-key".path;
+            ACCESS_KEY_FILE = config.services.ente-server.secrets.files."ente/s3-access-key-id".path;
+            SECRET_KEY_FILE = config.services.ente-server.secrets.files."ente/s3-secret-access-key".path;
 
             AWS_DEFAULT_REGION = s3.region;
           };

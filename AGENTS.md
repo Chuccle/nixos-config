@@ -126,7 +126,7 @@ nix fmt           # expect "0 changed"
 ## Scripts
 
 - `pkgs.writeShellApplication` with `runtimeInputs`; no raw store paths
-  (except `secrets.files.*.script`, which has no runtime-inputs option yet).
+  (except `services.ente-server.secrets.files.*.script`, which has no runtime-inputs option yet).
 - Standalone scripts: `# shellcheck shell=bash`, `set -euo pipefail`, quoted
   expansions, fail loudly.
 

@@ -21,7 +21,7 @@ let
     submodule
     ;
 
-  cfg = config.secrets;
+  cfg = config.services.ente-server.secrets;
 
   manifest =
     cfg.files
@@ -59,7 +59,7 @@ let
 in
 {
   # PERSISTENT SECRETS
-  options.secrets = {
+  options.services.ente-server.secrets = {
     directory = mkOption {
       type = path;
       default = "/var/lib/secrets";
@@ -78,7 +78,7 @@ in
               path = mkOption {
                 type = path;
                 default = "${cfg.directory}/${name}";
-                defaultText = "\${config.secrets.directory}/\${name}";
+                defaultText = "\${config.services.ente-server.secrets.directory}/\${name}";
                 description = "Where the secret lives on disk.";
               };
 
@@ -130,7 +130,7 @@ in
     assertions = mapAttrsToList (name: secret: {
       assertion = hasPrefix "${cfg.directory}/" "${secret.path}";
       message = ''
-        secrets.files.${name}.path must live under ${cfg.directory}, the
+        services.ente-server.secrets.files.${name}.path must live under ${cfg.directory}, the
         only directory the bootstrap unit can write to.
       '';
     }) cfg.files;
