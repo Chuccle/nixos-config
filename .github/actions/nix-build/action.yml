@@ -16,8 +16,7 @@ runs:
       with:
         extra_nix_config: |
           experimental-features = nix-command flakes pipe-operators
-          extra-substituters = https://chuccle.cachix.org https://nix-community.cachix.org
-          extra-trusted-public-keys = chuccle.cachix.org-1:FT8Le4No+sZMyaQEqyWAJdbikbo9CGRQxnFkB9Tl27w= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+          accept-flake-config = true
 
     - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
       with:

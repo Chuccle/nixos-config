@@ -7,7 +7,12 @@
       inherit (lib.modules) mkAliasOptionModule;
     in
     {
-      imports = singleton <| mkAliasOptionModule [ "programs" ] [ "rum" "programs" ];
+      imports =
+        singleton
+        <| mkAliasOptionModule (singleton "programs") [
+          "rum"
+          "programs"
+        ];
 
       # XDG
       environment.sessionVariables = {
@@ -27,7 +32,7 @@
     {
       imports = [
         inputs.hjem.nixosModules.hjem
-        (mkAliasOptionModule [ "home" ] [ "hjem" ])
+        (mkAliasOptionModule (singleton "home") <| singleton "hjem")
       ];
 
       home.extraModules = singleton inputs.hjem-rum.hjemModules.hjem-rum;

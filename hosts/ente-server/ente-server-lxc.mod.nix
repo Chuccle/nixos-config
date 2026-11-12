@@ -47,7 +47,7 @@ in
 
           s3Domain = domain "s3";
 
-          loopback = address: "http://127.0.0.1:${last (splitString ":" address)}";
+          loopback = address: "http://127.0.0.1:${address |> splitString ":" |> last}";
 
           toNginx = toKeyValue { mkKeyValue = name: value: "${name} ${toString value};"; };
 
@@ -250,8 +250,9 @@ in
               RemainAfterExit = true;
               UMask = "0077";
 
-              ExecStart = getExe (
-                pkgs.writeShellApplication {
+              ExecStart =
+                getExe
+                <| pkgs.writeShellApplication {
                   name = "garage-reconcile";
                   runtimeInputs = [
                     pkgs.awscli2
@@ -260,8 +261,7 @@ in
                     pkgs.jq
                   ];
                   text = fileContents ./garage-reconcile.sh;
-                }
-              );
+                };
 
               Restart = "on-failure";
               RestartSec = "10s";
@@ -308,18 +308,19 @@ in
             recommendedProxySettings = true;
 
             virtualHosts =
-              genAttrs
-                (
+              (
+                genAttrs (
                   attrValues config.services.ente.web.domains
                   ++ [
                     config.services.ente.api.domain
                     s3Domain
                   ]
                 )
-                (const {
+                <| const {
                   forceSSL = mkForce false;
                   enableACME = mkForce false;
-                })
+                }
+              )
               // {
                 ${s3Domain}.locations."/" = {
                   proxyPass = loopback garage.s3_api.api_bind_addr;
