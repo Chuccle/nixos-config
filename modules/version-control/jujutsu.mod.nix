@@ -1,39 +1,4 @@
 {
-  flake.homeModules.gh =
-    { lib, pkgs, ... }:
-    let
-      inherit (lib.generators) toYAML;
-      inherit (lib.lists) singleton;
-    in
-    {
-      packages = singleton pkgs.gh;
-
-      xdg.config.files."gh/config.yml".generator = toYAML { };
-      xdg.config.files."gh/config.yml".value = {
-        version = 1;
-      };
-    };
-
-  flake.homeModules.git =
-    { pkgs, ... }:
-    {
-      programs.git = {
-        enable = true;
-        package = pkgs.gitMinimal;
-
-        settings = {
-          user.name = "Chuccle";
-          user.email = "chuccle@example.com";
-
-          fetch.fsckObjects = true;
-          receive.fsckObjects = true;
-          transfer.fsckobjects = true;
-        };
-
-        integrations.difftastic.enable = true;
-      };
-    };
-
   flake.homeModules.jujutsu =
     { lib, pkgs, ... }:
     let
@@ -121,11 +86,11 @@
 
         aliases.u = singleton "undo";
 
-        revsets.bookmark-advance-to = /* python */ ''
+        revsets.bookmark-advance-to = /* jj */ ''
           heads(::@ & ~description(exact:"") & (~empty() | merges()))
         '';
 
-        revsets.log = /* python */ ''
+        revsets.log = /* jj */ ''
           present(@) | present(trunk()) | ancestors(remote_bookmarks().. | @.., 8)
         '';
 
@@ -146,7 +111,7 @@
         ui.conflict-marker-style = "snapshot";
         ui.graph.style = "curved";
 
-        templates.draft_commit_description = /* python */ ''
+        templates.draft_commit_description = /* jj */ ''
           concat(
             coalesce(description, "\n"),
             surround(
@@ -158,7 +123,7 @@
           )
         '';
 
-        templates.git_push_bookmark = /* python */ ''
+        templates.git_push_bookmark = /* jj */ ''
           "chuccle/change-" ++ change_id.short()
         '';
 

@@ -8,27 +8,25 @@
     {
       imports = singleton self.nixosModules.unfree;
 
-      config = {
-        allowedUnfreePackageNames = [
-          "nvidia-x11"
-          "nvidia-settings"
-        ];
+      allowedUnfreePackageNames = [
+        "nvidia-x11"
+        "nvidia-settings"
+      ];
 
-        boot.initrd.kernelModules = [
-          "nvidia"
-          "nvidia_modeset"
-          "nvidia_drm"
-        ];
+      boot.initrd.kernelModules = [
+        "nvidia"
+        "nvidia_modeset"
+        "nvidia_drm"
+      ];
 
-        hardware.graphics.enable = true;
+      hardware.graphics.enable = true;
 
-        hardware.nvidia = {
-          open = true;
-          modesetting.enable = true;
-          powerManagement.enable = true;
-        };
-
-        services.xserver.videoDrivers = singleton "nvidia";
+      hardware.nvidia = {
+        open = true;
+        modesetting.enable = true;
+        powerManagement.enable = true;
       };
+
+      services.xserver.videoDrivers = singleton "nvidia";
     };
 }

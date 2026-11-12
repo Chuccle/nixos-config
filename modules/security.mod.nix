@@ -8,7 +8,6 @@
     {
       security = {
         doas.enable = true;
-        sudo.enable = false;
         doas.extraRules =
           config.users.users
           |> attrValues
@@ -20,6 +19,8 @@
               persist = true;
             }
           );
+
+        sudo.enable = false;
       };
     };
 }

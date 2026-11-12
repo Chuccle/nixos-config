@@ -15,12 +15,12 @@
         ;
       inherit (lib.lists) elem singleton;
       inherit (lib.meta) getExe;
-      inherit (lib.trivial) const flip;
+      inherit (lib.trivial) const;
     in
     {
       environment.sessionVariables.EDITOR = getExe config.programs.helix.package;
 
-      xdg.mime-apps.default-applications = flip genAttrs (const "Helix.desktop") [
+      xdg.mime-apps.default-applications = genAttrs [
         "application/x-shellscript"
         "text/english"
         "text/plain"
@@ -36,7 +36,7 @@
         "text/x-pascal"
         "text/x-tcl"
         "text/x-tex"
-      ];
+      ] (const "Helix.desktop");
 
       programs.helix.enable = true;
 
@@ -51,7 +51,7 @@
           file-picker.hidden = false;
           idle-timeout = 0;
           shell = [
-            "nu"
+            (getExe config.programs.nushell.package)
             "--commands"
           ];
           text-width = 100;
@@ -173,24 +173,20 @@
             |> attrValues
           )
           ++ [
-
             {
               name = "nix";
               auto-format = true;
               formatter.command = "nixfmt";
             }
-
             {
               name = "python";
               auto-format = true;
               language-servers = singleton "basedpyright";
             }
-
             {
               name = "toml";
               auto-format = true;
             }
-
             {
               name = "rust";
 
@@ -210,7 +206,7 @@
                 args.program = "{0}";
                 args.initCommands =
                   let
-                    primer = pkgs.writeText "primer.py" ''
+                    primer = pkgs.writeText "primer.py" /* python */ ''
                       import subprocess
                       import pathlib
                       import lldb
@@ -226,7 +222,6 @@
                   singleton "command script import ${primer}/primer.py";
               };
             }
-
           ];
       };
     };

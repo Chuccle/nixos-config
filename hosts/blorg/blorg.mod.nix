@@ -108,6 +108,9 @@
               self.homeModules.ida-pro
               self.homeModules.desktop-ghostty
               self.homeModules.desktop-tools
+              self.homeModules.desktop-programs
+              self.homeModules.helix
+              self.homeModules.helix-desktop
               self.homeModules.bitwarden
               self.homeModules.btop
               self.homeModules.haruna
@@ -117,8 +120,6 @@
               self.homeModules.vscodium
             ];
           };
-
-          nixpkgs.hostPlatform = "x86_64-linux";
           system.stateVersion = "26.05";
         }
       )

@@ -14,11 +14,9 @@
     {
       imports = singleton inputs.lanzaboote.nixosModules.lanzaboote;
 
-      config = {
-        environment.systemPackages = singleton pkgs.sbctl;
+      environment.systemPackages = singleton pkgs.sbctl;
 
-        boot.loader.systemd-boot.enable = mkIf config.boot.lanzaboote.enable <| mkForce false;
-        boot.lanzaboote.pkiBundle = "/var/lib/sbctl";
-      };
+      boot.loader.systemd-boot.enable = mkIf config.boot.lanzaboote.enable <| mkForce false;
+      boot.lanzaboote.pkiBundle = "/var/lib/sbctl";
     };
 }

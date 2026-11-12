@@ -4,12 +4,17 @@
     let
       inherit (lib.attrsets) genAttrs;
       inherit (lib.lists) singleton;
-      inherit (lib.trivial) const flip;
+      inherit (lib.trivial) const;
     in
     {
+      packages = [
+        pkgs.kdePackages.dolphin
+        pkgs.kdePackages.ark
+      ];
+
       xdg.mime-apps.default-applications =
-        (flip genAttrs (const "org.kde.dolphin.desktop") <| singleton "inode/directory")
-        // flip genAttrs (const "org.kde.ark.desktop") [
+        genAttrs (singleton "inode/directory") (const "org.kde.dolphin.desktop")
+        // genAttrs [
           # LIBARCHIVE (READ-WRITE)
           "application/x-tar"
           "application/x-compressed-tar"
@@ -68,13 +73,7 @@
           # UNARCHIVER
           "application/x-lha"
           "application/x-stuffit"
-        ];
-
-      packages = [
-        pkgs.kdePackages.dolphin
-        pkgs.kdePackages.ark
-        pkgs.kdePackages.breeze
-      ];
+        ] (const "org.kde.ark.desktop");
 
       xdg.config.files."dolphinrc" = {
         generator = (pkgs.formats.ini { }).generate "dolphinrc";

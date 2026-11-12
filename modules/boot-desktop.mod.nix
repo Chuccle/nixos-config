@@ -8,17 +8,15 @@
     {
       imports = singleton self.nixosModules.boot;
 
-      config = {
-        boot.loader.systemd-boot.consoleMode = "keep";
-        boot.loader.timeout = 0;
+      boot.loader.systemd-boot.consoleMode = "keep";
+      boot.loader.timeout = 0;
 
-        boot.consoleLogLevel = 3;
-        boot.kernelParams = singleton "quiet";
+      boot.consoleLogLevel = 3;
+      boot.kernelParams = singleton "quiet";
 
-        boot.plymouth = {
-          enable = true;
-          theme = "spinner";
-        };
+      boot.plymouth = {
+        enable = true;
+        theme = "spinner";
       };
     };
 }

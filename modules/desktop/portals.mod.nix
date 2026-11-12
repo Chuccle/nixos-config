@@ -6,7 +6,7 @@
       inherit (lib.modules) mkForce;
     in
     {
-      config.xdg.portal = {
+      xdg.portal = {
         extraPortals = singleton pkgs.kdePackages.xdg-desktop-portal-kde;
 
         config.niri."org.freedesktop.impl.portal.FileChooser" = mkForce <| singleton "kde";
