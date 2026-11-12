@@ -3,30 +3,31 @@
 set -euo pipefail
 umask 0077
 
-admin() {
-  local method="$1" path="$2"
-  shift 2
-  curl -fsS -X "$method" \
-    -H "Authorization: Bearer $(<"$CREDENTIALS_DIRECTORY/admin_token")" \
-    -H 'Content-Type: application/json' \
-    "$@" "$ADMIN_URL$path"
-}
-
 # READINESS
 
+status=""
+last_error=""
 for _ in $(seq 60); do
-  if admin GET /v1/health >/dev/null 2>&1; then
+  if status="$(garage json-api GetClusterStatus 2>&1)"; then
     break
   fi
+  last_error="$status"
+  status=""
   sleep 2
 done
 
-if ! admin GET /v1/health >/dev/null 2>&1; then
-  echo "Garage admin API never became ready" >&2
+if [[ -z "$status" ]]; then
+  echo "Garage never became ready: ${last_error:-no output}" >&2
   exit 1
 fi
 
-node_id="$(admin GET /v1/status | jq -er '.node')"
+node_id="$(jq -r --arg addr "$RPC_ADDR" '.nodes[] | select(.addr == $addr) | .id' <<<"$status" | head -1)"
+
+if [[ -z "$node_id" ]]; then
+  echo "could not identify this node by rpc address $RPC_ADDR" >&2
+  exit 1
+fi
+
 echo "node: $node_id"
 
 # LAYOUT
@@ -34,25 +35,20 @@ echo "node: $node_id"
 available_bytes="$(df --output=size -B1 "$DATA_DIR" | tail -1)"
 desired=$((available_bytes * 90 / 100))
 
-layout="$(admin GET /v1/layout)"
-
+layout="$(garage json-api GetClusterLayout)"
+version="$(jq -er '.version' <<<"$layout")"
 current="$(jq -r --arg id "$node_id" '[.roles[] | select(.id == $id) | .capacity] | first // 0' <<<"$layout")"
-
-tags="$(jq -c --arg id "$node_id" '[.roles[] | select(.id == $id) | .tags] | first // []' <<<"$layout")"
 
 if [[ "$current" != "$desired" ]]; then
   echo "staging capacity $current -> $desired"
 
-  admin POST /v1/layout --data "$(jq -n \
-    --arg id "$node_id" \
-    --argjson capacity "$desired" \
-    --argjson tags "$tags" \
-    '[{id: $id, zone: "dc1", capacity: $capacity, tags: $tags}]')" >/dev/null
+  tags=()
+  while IFS= read -r tag; do
+    [[ -n "$tag" ]] && tags+=(-t "$tag")
+  done < <(jq -r --arg id "$node_id" '[.roles[] | select(.id == $id) | .tags[]] | .[]' <<<"$layout")
 
-  version="$(admin GET /v1/layout | jq -er '.version')"
-
-  admin POST /v1/layout/apply --data "$(jq -n \
-    --argjson version "$((version + 1))" '{version: $version}')" >/dev/null
+  garage layout assign -z dc1 -c "$desired" "${tags[@]}" "$node_id" >/dev/null
+  garage layout apply --version "$((version + 1))" >/dev/null
 fi
 
 # S3 KEY
@@ -61,7 +57,7 @@ if [[ -s "$ACCESS_KEY_FILE" && -s "$SECRET_KEY_FILE" ]]; then
   access_key="$(<"$ACCESS_KEY_FILE")"
   secret_key="$(<"$SECRET_KEY_FILE")"
 elif [[ ! -s "$ACCESS_KEY_FILE" && ! -s "$SECRET_KEY_FILE" ]]; then
-  key_list="$(admin GET /v1/key)"
+  key_list="$(garage json-api ListKeys)"
 
   if jq -e --arg n "$KEY_NAME" 'any(.[]; .name == $n)' <<<"$key_list" >/dev/null; then
     echo "Garage key $KEY_NAME exists but its credentials are missing." >&2
@@ -70,7 +66,8 @@ elif [[ ! -s "$ACCESS_KEY_FILE" && ! -s "$SECRET_KEY_FILE" ]]; then
   fi
 
   echo "creating key $KEY_NAME"
-  key_info="$(admin POST /v1/key --data "$(jq -n --arg name "$KEY_NAME" '{name: $name}')")"
+
+  key_info="$(garage json-api CreateKey "$(jq -n --arg name "$KEY_NAME" '{name: $name}')")"
   access_key="$(jq -er '.accessKeyId' <<<"$key_info")"
   secret_key="$(jq -er '.secretAccessKey' <<<"$key_info")"
 
@@ -83,19 +80,21 @@ else
 fi
 
 # BUCKET
-bucket_id="$(admin GET "/v1/bucket?globalAlias=$BUCKET" 2>/dev/null | jq -r '.id // empty' || true)"
+
+bucket_id="$(
+  garage json-api ListBuckets |
+    jq -r --arg b "$BUCKET" '[.[] | select(.globalAliases | index($b)) | .id] | first // empty'
+)"
 
 if [[ -z "$bucket_id" ]]; then
   echo "creating bucket $BUCKET"
-  bucket_id="$(admin POST /v1/bucket \
-    --data "$(jq -n --arg alias "$BUCKET" '{globalAlias: $alias}')" | jq -er '.id')"
+  bucket_id="$(garage json-api CreateBucket "$(jq -n --arg alias "$BUCKET" '{globalAlias: $alias}')" | jq -er '.id')"
 fi
 
-admin POST /v1/bucket/allow --data "$(jq -n \
+garage json-api AllowBucketKey "$(jq -n \
   --arg bucket "$bucket_id" \
   --arg key "$access_key" \
-  '{bucketId: $bucket, accessKeyId: $key,
-    permissions: {read: true, write: true, owner: true}}')" >/dev/null
+  '{bucketId: $bucket, accessKeyId: $key, permissions: {read: true, write: true, owner: true}}')" >/dev/null
 
 # CORS
 

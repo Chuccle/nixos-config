@@ -42,7 +42,35 @@ in
             ;
           inherit (lib.trivial) const;
 
+          garageSettings = secretPath: {
+            metadata_dir = "/var/lib/garage/meta";
+            data_dir = "/var/lib/garage/data";
+
+            replication_factor = 1;
+
+            rpc_bind_addr = "[::]:3901";
+            rpc_public_addr = "127.0.0.1:3901";
+            rpc_secret_file = secretPath;
+
+            s3_api = {
+              s3_region = "garage";
+              api_bind_addr = "[::]:3900";
+              root_domain = ".s3.garage.localhost";
+            };
+
+            s3_web = {
+              bind_addr = "[::]:3902";
+              root_domain = ".web.garage.localhost";
+              index = "index.html";
+            };
+          };
+
           garage = config.services.garage.settings;
+
+          garageCliConfig =
+            garageSettings "/run/credentials/garage-reconcile.service/rpc_secret"
+            |> (pkgs.formats.toml { }).generate "garage-cli.toml";
+
           s3 = config.services.ente.api.settings.s3.b2-eu-cen;
 
           s3Domain = domain "s3";
@@ -104,36 +132,9 @@ in
           # GARAGE
           services.garage = {
             enable = true;
-            package = pkgs.garage;
+            package = pkgs.garage_2;
 
-            settings = {
-              metadata_dir = "/var/lib/garage/meta";
-              data_dir = "/var/lib/garage/data";
-
-              replication_factor = 1;
-
-              rpc_bind_addr = "[::]:3901";
-              rpc_public_addr = "127.0.0.1:3901";
-              rpc_secret_file = credential "garage" "rpc_secret";
-
-              s3_api = {
-                s3_region = "garage";
-                api_bind_addr = "[::]:3900";
-                root_domain = ".s3.garage.localhost";
-              };
-
-              s3_web = {
-                bind_addr = "[::]:3902";
-                root_domain = ".web.garage.localhost";
-                index = "index.html";
-              };
-
-              admin = {
-                api_bind_addr = "[::]:3903";
-                admin_token_file = credential "garage" "admin_token";
-                metrics_token_file = credential "garage" "metrics_token";
-              };
-            };
+            settings = credential "garage" "rpc_secret" |> garageSettings;
           };
 
           systemd.services.garage = {
@@ -218,8 +219,6 @@ in
             in
             {
               "garage/rpc_secret".script = "${openssl} rand -hex 32";
-              "garage/admin_token".script = "${openssl} rand -base64 32";
-              "garage/metrics_token".script = "${openssl} rand -base64 32";
 
               "ente/encryption-key".script = enteKey "key\\.encryption";
               "ente/encryption-hash-key".script = enteKey "key\\.hash";
@@ -257,7 +256,7 @@ in
                   runtimeInputs = [
                     pkgs.awscli2
                     pkgs.coreutils
-                    pkgs.curl
+                    config.services.garage.package
                     pkgs.jq
                   ];
                   text = fileContents ./garage-reconcile.sh;
@@ -266,7 +265,7 @@ in
               Restart = "on-failure";
               RestartSec = "10s";
 
-              LoadCredential = singleton "admin_token:${config.secrets.files."garage/admin_token".path}";
+              LoadCredential = singleton "rpc_secret:${config.secrets.files."garage/rpc_secret".path}";
 
               ProtectHome = "tmpfs";
 
@@ -274,12 +273,14 @@ in
             };
 
             environment = {
-              ADMIN_URL = loopback garage.admin.api_bind_addr;
+              GARAGE_CONFIG_FILE = garageCliConfig;
+
               S3_URL = loopback garage.s3_api.api_bind_addr;
 
               BUCKET = s3.bucket;
               KEY_NAME = "ente-key";
               DATA_DIR = garage.data_dir;
+              RPC_ADDR = garage.rpc_public_addr;
 
               CORS_POLICY = pkgs.writers.writeJSON "ente-bucket-cors.json" {
                 CORSRules = singleton {
