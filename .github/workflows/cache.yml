@@ -78,8 +78,8 @@ jobs:
       - run: nix flake check --keep-going
 
   # A desktop closure recompiles for far longer than a pull request should hold
-  # a runner, so it only runs when asked for. eval-<host> checks in the other
-  # jobs cover evaluation on every run.
+  # a runner, so it only runs when asked for. The validate job evaluates every
+  # host on each run.
   desktops:
     name: desktops
     runs-on: ubuntu-latest
@@ -93,7 +93,10 @@ jobs:
       - uses: ./.github/actions/nix-build
         with:
           select: >-
-            f: { inherit (f.outputs.checks.x86_64-linux) host-blorg host-blorg-live; }
+            f: {
+              blorg = f.outputs.nixosConfigurations.blorg.config.system.build.toplevel;
+              blorg-live = f.outputs.nixosConfigurations.blorg-live.config.system.build.toplevel;
+            }
           publish: "false"
           cachix-auth-token: ""
 
