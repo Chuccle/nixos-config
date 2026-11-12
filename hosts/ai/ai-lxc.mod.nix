@@ -27,13 +27,16 @@ in
 
           # dsh spawns bash for the shell tool and bwrap for the sandbox, both
           # by name, so both must be on the unit's PATH. Its glob/grep tools use
-          # a ripgrep binary bundled in the package, not a system one. git and
-          # ssh cover repository work; coreutils, findutils, grep, sed and
-          # systemd already arrive via systemd.defaultPath.
+          # a ripgrep binary bundled in the package, not a system one. git, gh
+          # and ssh cover repository work, node runs the worktree tooling;
+          # coreutils, findutils, grep, sed and systemd already arrive via
+          # systemd.defaultPath.
           tooling = with pkgs; [
             bashInteractive
             bubblewrap
             git
+            gh
+            nodejs_24
             openssh
             curl
             jq
