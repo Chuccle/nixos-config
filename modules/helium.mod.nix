@@ -7,16 +7,10 @@ let
   inherit (lib.trivial) importJSON;
 
   extensions = {
-    clearurls.id = "lckanjgmijmafbedllaakclkaicjfmnk";
-    dark-reader.id = "eimadpbcbfnmbkopoojfekhnkhdbieeh";
-    dearrow.id = "enamippconapkdmgfgjchkhakpfinmaj";
-    floccus.id = "fnaicdffflnofjppbagibeoednhnbjhg";
-    i-still-dont-care-about-cookies.id = "edibdbjcniadpccecjdfdjjppcpchdlm";
-    kagi.id = "cdglnehniifkbagbbombnjghhcihifij";
+    bitwarden.id = "nngceckbapebfimnlniiiahkandclblb";
     old-reddit-redirect.id = "dneaehbmnbhcippjikoajpoabadpodje";
     refined-github.id = "hlepfoohegkhhmjieoechaddaejaokhf";
     sponsorblock.id = "mnjggcdmjocbbbhaepdhchncahnbgone";
-    stylus.id = "clngdbkpkpeebahjckkjfobafhncgmne";
     ublock-origin = fix (self: {
       id = "cjpalhdlnbpafiamejdnhcphjbkeiagm";
 
@@ -44,9 +38,6 @@ let
         |> filter (name: !(hasInfix "://" name || elem name self.filters.internal))
         |> map (invalid: "helium: unknown ublock filter list: ${invalid}");
     });
-    vimium-c.id = "hfjbmagddngcpeloejdejnfgbamkjaeg";
-    violentmonkey.id = "jinjaccalgkegednnccohejagnlnfdag";
-    web-archives.id = "hkligngkgcpcolhcnkgccglchdafcnao";
   };
 
   extensionForcelist =
@@ -109,6 +100,10 @@ in
         "x-scheme-handler/https"
       ];
 
-      packages = singleton inputs.helium.packages.${osConfig.nixpkgs.hostPlatform.system}.default;
+      packages =
+        singleton
+        <| inputs.helium.packages.${osConfig.nixpkgs.hostPlatform.system}.default.overrideAttrs {
+          extraBwrapArgs = singleton "--ro-bind-try /etc/chromium /etc/chromium";
+        };
     };
 }

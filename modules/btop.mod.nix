@@ -5,6 +5,6 @@
       inherit (lib.lists) singleton;
     in
     {
-      packages = singleton pkgs.btop;
+      packages = singleton <| pkgs.btop.override { cudaSupport = true; };
     };
 }
