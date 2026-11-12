@@ -1,15 +1,15 @@
 {
   flake.homeModules.desktop-ghostty =
-    { lib, pkgs, ... }:
+    { config, lib, ... }:
     let
       inherit (lib.meta) getExe;
     in
     {
-      config.programs.ghostty = {
+      programs.ghostty = {
         enable = true;
 
         settings = {
-          command = getExe pkgs.nushell;
+          command = getExe config.programs.nushell.package;
 
           font-family = "DejaVu Sans Mono";
           font-size = 12;

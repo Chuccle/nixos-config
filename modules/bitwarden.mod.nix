@@ -7,13 +7,4 @@
     {
       packages = singleton pkgs.bitwarden-desktop;
     };
-
-  flake.nixosModules.bitwarden =
-    { lib, ... }:
-    let
-      inherit (lib.strings) getName;
-    in
-    {
-      nixpkgs.config.allowInsecurePredicate = pkg: getName pkg == "electron";
-    };
 }

@@ -1,43 +1,46 @@
 { inputs, lib, ... }:
 let
   inherit (lib.attrsets) attrNames mapAttrsToList;
-  inherit (lib.fixedPoints) fix;
   inherit (lib.lists) elem filter singleton;
   inherit (lib.strings) hasInfix;
   inherit (lib.trivial) importJSON;
+
+  ublockFilters = {
+    internal = attrNames <| importJSON "${inputs.ublock}/assets/assets.json";
+
+    wanted = [
+      "ublock-filters"
+      "ublock-badware"
+      "ublock-privacy"
+      "ublock-unbreak"
+      "easylist"
+      "easyprivacy"
+      "urlhaus-1"
+      "plowe-0"
+
+      "https://raw.githubusercontent.com/DandelionSprout/adfilt/refs/heads/master/ClearURLs%20for%20uBo/clear_urls_uboified.txt"
+      "https://raw.githubusercontent.com/yokoffing/filterlists/refs/heads/main/privacy_essentials.txt"
+      "https://raw.githubusercontent.com/DandelionSprout/adfilt/refs/heads/master/LegitimateURLShortener.txt"
+      "https://raw.githubusercontent.com/yokoffing/filterlists/refs/heads/main/annoyance_list.txt"
+      "https://raw.githubusercontent.com/DandelionSprout/adfilt/refs/heads/master/BrowseWebsitesWithoutLoggingIn.txt"
+    ];
+
+    warnings =
+      ublockFilters.wanted
+      |> filter (name: !(hasInfix "://" name || elem name ublockFilters.internal))
+      |> map (invalid: "helium: unknown ublock filter list: ${invalid}");
+  };
 
   extensions = {
     bitwarden.id = "nngceckbapebfimnlniiiahkandclblb";
     old-reddit-redirect.id = "dneaehbmnbhcippjikoajpoabadpodje";
     refined-github.id = "hlepfoohegkhhmjieoechaddaejaokhf";
     sponsorblock.id = "mnjggcdmjocbbbhaepdhchncahnbgone";
-    ublock-origin = fix (self: {
+
+    ublock-origin = {
       id = "cjpalhdlnbpafiamejdnhcphjbkeiagm";
-
-      filters.internal = attrNames <| importJSON "${inputs.ublock}/assets/assets.json";
-
-      filters.wanted = [
-        "ublock-filters"
-        "ublock-badware"
-        "ublock-privacy"
-        "ublock-unbreak"
-        "easylist"
-        "easyprivacy"
-        "urlhaus-1"
-        "plowe-0"
-
-        "https://raw.githubusercontent.com/DandelionSprout/adfilt/refs/heads/master/ClearURLs%20for%20uBo/clear_urls_uboified.txt"
-        "https://raw.githubusercontent.com/yokoffing/filterlists/refs/heads/main/privacy_essentials.txt"
-        "https://raw.githubusercontent.com/DandelionSprout/adfilt/refs/heads/master/LegitimateURLShortener.txt"
-        "https://raw.githubusercontent.com/yokoffing/filterlists/refs/heads/main/annoyance_list.txt"
-        "https://raw.githubusercontent.com/DandelionSprout/adfilt/refs/heads/master/BrowseWebsitesWithoutLoggingIn.txt"
-      ];
-
-      filters.warnings =
-        self.filters.wanted
-        |> filter (name: !(hasInfix "://" name || elem name self.filters.internal))
-        |> map (invalid: "helium: unknown ublock filter list: ${invalid}");
-    });
+      filters = ublockFilters;
+    };
   };
 
   extensionForcelist =
@@ -58,7 +61,7 @@ let
   };
 in
 {
-  flake.nixosModules.helium = _: {
+  flake.nixosModules.helium = {
     inherit (extensions.ublock-origin.filters) warnings;
 
     programs.chromium = {
@@ -74,16 +77,22 @@ in
   };
 
   flake.homeModules.helium =
-    { lib, osConfig, ... }:
+    { lib, pkgs, ... }:
     let
       inherit (lib.attrsets) genAttrs;
       inherit (lib.lists) singleton;
-      inherit (lib.trivial) const flip;
+      inherit (lib.trivial) const;
     in
     {
       environment.sessionVariables.BROWSER = "helium";
 
-      xdg.mime-apps.default-applications = flip genAttrs (const "helium.desktop") [
+      packages =
+        singleton
+        <| inputs.helium.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs {
+          extraBwrapArgs = singleton "--ro-bind-try /etc/chromium /etc/chromium";
+        };
+
+      xdg.mime-apps.default-applications = genAttrs [
         "application/pdf"
         "application/rdf+xml"
         "application/rss+xml"
@@ -98,12 +107,6 @@ in
         "text/xml"
         "x-scheme-handler/http"
         "x-scheme-handler/https"
-      ];
-
-      packages =
-        singleton
-        <| inputs.helium.packages.${osConfig.nixpkgs.hostPlatform.system}.default.overrideAttrs {
-          extraBwrapArgs = singleton "--ro-bind-try /etc/chromium /etc/chromium";
-        };
+      ] (const "helium.desktop");
     };
 }

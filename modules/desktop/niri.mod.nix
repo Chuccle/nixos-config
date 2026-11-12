@@ -16,14 +16,12 @@ in
     {
       imports = singleton inputs.niri.lib.internal.settings-module;
 
-      config.environment.sessionVariables = {
+      environment.sessionVariables = {
         XCURSOR_THEME = config.programs.niri.settings.cursor.theme;
         XCURSOR_SIZE = toString config.programs.niri.settings.cursor.size;
       };
 
-      config.environment.systemPackages = singleton pkgs.kdePackages.breeze;
-
-      config.programs.niri = {
+      programs.niri = {
         settings = {
           prefer-no-csd = true;
 
@@ -159,15 +157,13 @@ in
   flake.homeModules.desktop-niri =
     { osConfig, pkgs, ... }:
     {
-      config = {
-        xdg.config.files."niri/config.kdl".source =
-          inputs.niri.lib.internal.validated-config-for pkgs osConfig.programs.niri.package
-            osConfig.programs.niri.finalConfig;
+      xdg.config.files."niri/config.kdl".source =
+        inputs.niri.lib.internal.validated-config-for pkgs osConfig.programs.niri.package
+          osConfig.programs.niri.finalConfig;
 
-        rum.misc.gtk.settings = {
-          cursor-theme-name = osConfig.programs.niri.settings.cursor.theme;
-          cursor-theme-size = osConfig.programs.niri.settings.cursor.size;
-        };
+      rum.misc.gtk.settings = {
+        cursor-theme-name = osConfig.programs.niri.settings.cursor.theme;
+        cursor-theme-size = osConfig.programs.niri.settings.cursor.size;
       };
     };
 }

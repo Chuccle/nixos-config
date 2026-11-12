@@ -8,15 +8,13 @@
     {
       imports = singleton self.nixosModules.unfree;
 
-      config = {
-        allowedUnfreePackageNames = [
-          "steam"
-          "steam-unwrapped"
-          "steam-original"
-          "steam-run"
-        ];
+      allowedUnfreePackageNames = [
+        "steam"
+        "steam-unwrapped"
+        "steam-original"
+        "steam-run"
+      ];
 
-        programs.steam.enable = true;
-      };
+      programs.steam.enable = true;
     };
 }

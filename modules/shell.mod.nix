@@ -13,7 +13,7 @@
 
       shellPkg =
         {
-          inherit (pkgs) nushell bash zsh;
+          inherit (pkgs) bash nushell zsh;
         }
         .${config.shell.default};
     in
