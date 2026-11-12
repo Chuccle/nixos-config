@@ -25,14 +25,14 @@ in
           inherit (lib.meta) getExe;
           dsh = pkgs.deepseek-harness;
 
-          # The three dsh spawns by name — bash (shell), rg (glob/grep tools),
-          # bwrap (sandbox) — plus git/ssh for repository work. coreutils,
-          # findutils, grep, sed and systemd already arrive via
-          # systemd.defaultPath, so nothing else needs listing here.
+          # dsh spawns bash for the shell tool and bwrap for the sandbox, both
+          # by name, so both must be on the unit's PATH. Its glob/grep tools use
+          # a ripgrep binary bundled in the package, not a system one. git and
+          # ssh cover repository work; coreutils, findutils, grep, sed and
+          # systemd already arrive via systemd.defaultPath.
           tooling = with pkgs; [
             bashInteractive
             bubblewrap
-            ripgrep
             git
             openssh
             curl
